@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/imrooli/BSS-Scripting/main/mainscripts/StickerESP.lua"))()
