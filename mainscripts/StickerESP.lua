@@ -44,7 +44,7 @@ local function processStickers()
     end
 
     -- Notify the player about the number of stickers found
-    notifyPlayer(stickerCount > 0 and "Found " .. stickerCount .. " hidden stickers." or "No hidden stickers found.")
+    notifyPlayer(stickerCount > 0 and "Found " .. stickerCount .. " hidden stickers." or "No hidden stickers found (yet).")
 end
 
 -- Connect the function to the ChildAdded event for dynamic updates
