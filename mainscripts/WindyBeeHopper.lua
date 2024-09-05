@@ -1,5 +1,4 @@
 repeat task.wait() until game:IsLoaded()
-wait(2)
 print("Windy Bee Hopper Loaded!")
 
 local httpService = game:GetService("HttpService")
@@ -53,7 +52,7 @@ local function hop()
             local hopSuccess, errorMessage = pcall(function()
                 if Found then return true end
                 notify("Windy Bee Not Found", "No Windy Bee on this server. Hopping to the next...")
-				wait(2)
+				wait(1)
                 teleportService:TeleportToPlaceInstance(placeID, serverID, game.Players.LocalPlayer)
             end)
             
