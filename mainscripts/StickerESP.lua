@@ -47,11 +47,30 @@ local function processStickers()
     notifyPlayer(stickerCount > 0 and "Found " .. stickerCount .. " hidden stickers." or "No hidden stickers found (yet).")
 end
 
+-- Function to handle sticker removal
+local function handleStickerRemoved()
+    local stickerCount = #stickersFolder:GetChildren()
+
+    -- Notify player about remaining stickers
+    if stickerCount > 0 then
+        notifyPlayer("Sticker obtained! " .. stickerCount .. " stickers remain.")
+    else
+        notifyPlayer("All hidden stickers have been found!")
+    end
+end
+
 -- Connect the function to the ChildAdded event for dynamic updates
 stickersFolder.ChildAdded:Connect(function(child)
     if child:IsA("BasePart") then
         createBoundingBox(child)
         notifyPlayer("New hidden sticker added: " .. child.Name)
+    end
+end)
+
+-- Connect the function to the ChildRemoved event to track when stickers are removed
+stickersFolder.ChildRemoved:Connect(function(child)
+    if child:IsA("BasePart") then
+        handleStickerRemoved()
     end
 end)
 
