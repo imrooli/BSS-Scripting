@@ -15,7 +15,7 @@ local function notify(title, text)
 end
 
 local function createBoundingBox(target)
-    local billboardGui = Instance.new("BillboardGui", target)
+    local billboardGui = Instance.new("BillboardGui", target.Head)
     billboardGui.Size = UDim2.new(0, 100, 0, 100)
     billboardGui.Adornee = target
     billboardGui.AlwaysOnTop = true
