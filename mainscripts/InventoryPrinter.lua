@@ -35,34 +35,55 @@ if content then
 
     -- Create a GUI to display the inventory
     local inventoryGui = Instance.new("ScreenGui", player.PlayerGui)
-    local inventoryBox = Instance.new("TextBox", inventoryGui)
-
-    -- Customize the GUI appearance
+    local inventoryFrame = Instance.new("Frame", inventoryGui)
+    local inventoryBox = Instance.new("TextBox", inventoryFrame)
+    
+    -- Customize the Frame and GUI appearance
     inventoryGui.Name = "InventoryGui"
+    inventoryFrame.Size = UDim2.new(0, 620, 0, 600)
+    inventoryFrame.Position = UDim2.new(0.5, -310, 0.5, -300)
+    inventoryFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)  -- Dark gray background
+    inventoryFrame.BorderSizePixel = 0
+    inventoryFrame.BackgroundTransparency = 0.2
+    inventoryFrame.Visible = true
+
+    -- Customize the inventory box appearance
     inventoryBox.Size = UDim2.new(0, 600, 0, 500)
-    inventoryBox.Position = UDim2.new(0.5, -300, 0.5, -250)
+    inventoryBox.Position = UDim2.new(0, 10, 0, 50)
     inventoryBox.TextScaled = true
     inventoryBox.TextWrapped = true
     inventoryBox.TextXAlignment = Enum.TextXAlignment.Left
     inventoryBox.TextYAlignment = Enum.TextYAlignment.Top
     inventoryBox.MultiLine = true
     inventoryBox.ClearTextOnFocus = false  -- To allow selecting and copying the text
+    inventoryBox.BackgroundColor3 = Color3.new(1, 1, 1)  -- White background
+    inventoryBox.TextColor3 = Color3.new(0, 0, 0)  -- Black text
+    inventoryBox.Font = Enum.Font.SourceSans
+    inventoryBox.TextSize = 14
 
-    -- Add a button to hide/show the inventory GUI
-    local toggleButton = Instance.new("TextButton", inventoryGui)
+    -- Add a hide/show button inside the inventory frame
+    local toggleButton = Instance.new("TextButton", inventoryFrame)
     toggleButton.Text = "Hide Inventory"
-    toggleButton.Size = UDim2.new(0, 100, 0, 50)
+    toggleButton.Size = UDim2.new(0, 100, 0, 30)
     toggleButton.Position = UDim2.new(0, 10, 0, 10)
+    toggleButton.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)  -- Red button
+    toggleButton.TextColor3 = Color3.new(1, 1, 1)  -- White text
+    toggleButton.Font = Enum.Font.SourceSansBold
+    toggleButton.TextSize = 16
     toggleButton.MouseButton1Click:Connect(function()
         inventoryBox.Visible = not inventoryBox.Visible
         toggleButton.Text = inventoryBox.Visible and "Hide Inventory" or "Show Inventory"
     end)
 
-    -- Add a button to refresh the inventory
-    local refreshButton = Instance.new("TextButton", inventoryGui)
+    -- Add a refresh button inside the inventory frame
+    local refreshButton = Instance.new("TextButton", inventoryFrame)
     refreshButton.Text = "Refresh Inventory"
-    refreshButton.Size = UDim2.new(0, 150, 0, 50)
+    refreshButton.Size = UDim2.new(0, 150, 0, 30)
     refreshButton.Position = UDim2.new(0, 120, 0, 10)
+    refreshButton.BackgroundColor3 = Color3.new(0.2, 0.8, 0.2)  -- Green button
+    refreshButton.TextColor3 = Color3.new(1, 1, 1)  -- White text
+    refreshButton.Font = Enum.Font.SourceSansBold
+    refreshButton.TextSize = 16
     refreshButton.MouseButton1Click:Connect(function()
         getInventory()  -- Call the function to refresh the inventory
     end)
