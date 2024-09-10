@@ -58,9 +58,6 @@ if content then
     refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     refreshButton.Text = "Refresh"
     refreshButton.TextScaled = true
-    refreshButton.TextButton.MouseButton1Click:Connect(function()
-        getInventory()
-    end)
 
     -- Function to retrieve and format inventory as JSON
     local function getInventory()
@@ -120,6 +117,10 @@ if content then
 
     -- Call the function to retrieve and format the inventory
     getInventory()
+	
+    refreshButton.TextButton.MouseButton1Click:Connect(function()
+        getInventory()
+    end)	
 
     -- Show the GUI
     inventoryGui.Enabled = true
