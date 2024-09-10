@@ -5,11 +5,13 @@ local HttpService = game:GetService("HttpService")
 
 -- Check GUI elements
 local menus = gui and gui:FindFirstChild("Menus")
-local eggs = menus and menus:FindFirstChild("Eggs")
+local menuschildren = menus and menus:FindFirstChild("Children")
+local eggs = menuschildren and menuschildren:FindFirstChild("Eggs")
 local content = eggs and eggs:FindFirstChild("Content")
 
 if not gui then print("Error: ScreenGui not found") return end
 if not menus then print("Error: Menus not found") return end
+if not menuschildren then print("Error: Children not found") return end
 if not eggs then print("Error: Eggs menu not found") return end
 if not content then print("Error: Content frame not found") return end
 
