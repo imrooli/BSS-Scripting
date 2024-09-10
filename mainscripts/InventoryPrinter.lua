@@ -5,13 +5,15 @@ local content = gui and gui:FindFirstChild("Menus") and gui.Menus.Children:FindF
 local HttpService = game:GetService("HttpService")
 
 if content then
-    local eggRows = content:FindFirstChild("EggRows") or content:GetChildren()
-    
+    -- Get the children of Content directly or from EggRows (which should be a frame containing rows)
+    local eggRows = content:FindFirstChild("EggRows")
+    local inventoryItems = eggRows and eggRows:GetChildren() or content:GetChildren() -- Ensure we get children in table form
+
     -- Create a GUI to display the inventory
     local inventoryGui = Instance.new("ScreenGui", player.PlayerGui)
     local inventoryFrame = Instance.new("Frame", inventoryGui)
     local inventoryBox = Instance.new("TextBox", inventoryFrame)
-    
+
     -- Customize the Frame and GUI appearance
     inventoryFrame.Size = UDim2.new(0, 620, 0, 600)
     inventoryFrame.Position = UDim2.new(0.5, -310, 0.5, -300)
@@ -61,7 +63,7 @@ if content then
     local function refreshInventory()
         local inventoryData = {}
 
-        for _, eggRow in pairs(eggRows) do
+        for _, eggRow in pairs(inventoryItems) do  -- Use 'inventoryItems' instead of 'eggRows'
             if eggRow:FindFirstChild("TypeName") and eggRow:FindFirstChild("EggSlot") then
                 local itemName = eggRow.TypeName.Text
                 local itemQuantity = parseQuantity(eggRow.EggSlot.Count.Text)
