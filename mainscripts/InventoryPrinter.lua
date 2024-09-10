@@ -31,21 +31,17 @@ if content then
     inventoryBox.BackgroundColor3 = Color3.new(1, 1, 1)
     inventoryBox.TextColor3 = Color3.new(0, 0, 0)
 
-    -- Hide/show button
-    local toggleButton = Instance.new("TextButton", inventoryFrame)
+    -- Hide/show button outside of inventoryFrame (so it stays visible)
+    local toggleButton = Instance.new("TextButton", inventoryGui)  -- Add directly to inventoryGui, not inventoryFrame
     toggleButton.Text = "Hide Inventory"
-    toggleButton.Size = UDim2.new(0, 100, 0, 30)
-    toggleButton.Position = UDim2.new(0, 10, 0, 10)
+    toggleButton.Size = UDim2.new(0, 120, 0, 40)
+    toggleButton.Position = UDim2.new(0, 10, 0.5, -20)  -- Positioned to the side, stays visible
     toggleButton.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
     toggleButton.TextColor3 = Color3.new(1, 1, 1)
     toggleButton.Font = Enum.Font.SourceSansBold
     toggleButton.TextSize = 16
-    toggleButton.MouseButton1Click:Connect(function()
-        inventoryGui.Enabled = not inventoryGui.Enabled
-        toggleButton.Text = inventoryGui.Enabled and "Hide Inventory" or "Show Inventory"
-    end)
 
-    -- Refresh button
+    -- Refresh button inside the inventoryFrame
     local refreshButton = Instance.new("TextButton", inventoryFrame)
     refreshButton.Text = "Refresh Inventory"
     refreshButton.Size = UDim2.new(0, 150, 0, 30)
@@ -84,6 +80,12 @@ if content then
 
     -- Initial load of inventory
     refreshInventory()
+
+    -- Toggle visibility of the inventory frame
+    toggleButton.MouseButton1Click:Connect(function()
+        inventoryFrame.Visible = not inventoryFrame.Visible
+        toggleButton.Text = inventoryFrame.Visible and "Hide Inventory" or "Show Inventory"
+    end)
 else
     print("Error: Unable to locate inventory content.")
 end
