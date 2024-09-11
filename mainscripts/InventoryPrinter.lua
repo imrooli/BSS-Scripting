@@ -135,6 +135,10 @@ if not eggs then
     return
 else
     print("Debug: Eggs menu found.")
+    
+    -- Count and print number of children in the Eggs menu
+    local eggsChildrenCount = #eggs:GetChildren()
+    print("Debug: Eggs menu has " .. eggsChildrenCount .. " children.")
 end
 
 if not content then
@@ -142,6 +146,10 @@ if not content then
     return
 else
     print("Debug: Content frame found.")
+    
+    -- Count and print number of children in the Content frame
+    local contentChildrenCount = #content:GetChildren()
+    print("Debug: Content frame has " .. contentChildrenCount .. " children.")
 end
 
 -- Determine inventory items
