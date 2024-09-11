@@ -83,6 +83,21 @@ G2L["7"].Name = "ToggleButton"
 G2L["7"].BorderColor3 = Color3.fromRGB(0, 0, 0)
 G2L["7"].Text = "❌"
 
+-- StarterGui.InventoryExporterGUI.ToggleFrame.DestroyButton
+G2L["8"] = Instance.new("TextButton", G2L["6"]);
+G2L["8"].BorderSizePixel = 0;
+G2L["8"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
+G2L["8"].TextSize = 14;
+G2L["8"].FontFace = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal);
+G2L["8"].TextColor3 = Color3.fromRGB(0, 0, 0);
+G2L["8"].Size = UDim2.new(0, 20, 0, 19);
+G2L["8"].Name = [[DestroyButton]];
+G2L["8"].BorderColor3 = Color3.fromRGB(0, 0, 0);
+G2L["8"].Text = [[🔥]];
+G2L["8"].Position = UDim2.new(-2.75, 0, 0, 0);
+
+
+
 -- Define variables for easier access
 local player = game:GetService("Players").LocalPlayer
 local gui = player.PlayerGui:FindFirstChild("ScreenGui")
@@ -97,33 +112,65 @@ local content = eggs and eggs:FindFirstChild("Content")
 if not gui then
     warn("Error: InventoryExporterGUI not found. Please ensure the GUI is correctly loaded.")
     return
+else
+    print("Debug: ScreenGui found.")
 end
+
 if not menus then
     warn("Error: Menus not found.")
     return
+else
+    print("Debug: Menus found.")
 end
+
 if not children then
     warn("Error: Children not found.")
     return
+else
+    print("Debug: Children folder found.")
 end
+
 if not eggs then
     warn("Error: Eggs menu not found.")
     return
+else
+    print("Debug: Eggs menu found.")
 end
+
 if not content then
     warn("Error: Content frame not found.")
     return
+else
+    print("Debug: Content frame found.")
 end
 
 -- Determine inventory items
 local inventoryItems = content:FindFirstChild("EggRows") and content.EggRows:GetChildren() or content:GetChildren()
 
+if inventoryItems then
+    print("Debug: Successfully retrieved inventory items.")
+else
+    warn("Error: Unable to retrieve inventory items.")
+    return
+end
+
 -- Function to parse quantities
 local function parseQuantity(quantityText)
-    if not quantityText or quantityText == "" then return 0 end
+    if not quantityText or quantityText == "" then 
+        warn("Warning: Quantity text is missing or empty.")
+        return 0 
+    end
+
+    print("Debug: Parsing quantity: " .. quantityText)
     quantityText = string.gsub(quantityText, "x", "")
     local numerator = string.match(quantityText, "(%d+)/")
-    return tonumber(numerator) or tonumber(quantityText) or 0
+
+    if numerator then
+        print("Debug: Fractional quantity detected: " .. numerator)
+        return tonumber(numerator)
+    else
+        return tonumber(quantityText) or 0
+    end
 end
 
 -- Retrieve and format inventory data
@@ -134,15 +181,31 @@ local function getInventory()
         if eggRow:FindFirstChild("TypeName") and eggRow:FindFirstChild("EggSlot") then
             local itemName = eggRow.TypeName.Text
             local itemQuantity = parseQuantity(eggRow.EggSlot.Count.Text)
+
+            print("Debug: Retrieved item - Name: " .. itemName .. ", Quantity: " .. itemQuantity)
+
             inventoryData[itemName] = itemQuantity
+        else
+            warn("Warning: Missing TypeName or EggSlot in eggRow.")
         end
     end
 
     -- Add honey value
-    inventoryData["Honey"] = player.CoreStats.Honey.Value
+    if player.CoreStats and player.CoreStats.Honey then
+        inventoryData["Honey"] = player.CoreStats.Honey.Value
+        print("Debug: Added Honey value: " .. player.CoreStats.Honey.Value)
+    else
+        warn("Warning: Unable to find Honey value in CoreStats.")
+    end
 
     -- Convert to JSON and update the TextBox
-    G2L["3"].Text = HttpService:JSONEncode(inventoryData)
+    local jsonData = HttpService:JSONEncode(inventoryData)
+    if jsonData then
+        print("Debug: Successfully encoded inventory data to JSON.")
+        G2L["3"].Text = jsonData
+    else
+        warn("Error: Failed to encode inventory data to JSON.")
+    end
 end
 
 getInventory()
@@ -154,4 +217,8 @@ end)
 
 G2L["7"].MouseButton1Click:Connect(function()
     G2L["2"].Visible = not G2L["2"].Visible
+end)
+
+G2L["8"].MouseButton1Click:Connect(function()
+    G2L["1"]:Destroy()
 end)
