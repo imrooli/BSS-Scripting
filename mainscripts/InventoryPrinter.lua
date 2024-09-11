@@ -30,7 +30,7 @@ G2L["3"].Size = UDim2.new(0, 184, 0, 137)
 G2L["3"].BorderColor3 = Color3.fromRGB(0, 0, 0)
 G2L["3"].Text = ""
 G2L["3"].Name = "ExportWindow"
-G2L["3"].Multiline = true
+G2L["3"].MultiLine = true
 G2L["3"].ClearTextOnFocus = true
 
 -- Create the RefreshButton
