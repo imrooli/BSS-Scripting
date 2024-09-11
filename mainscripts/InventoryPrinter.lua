@@ -31,7 +31,7 @@ G2L["3"].BorderColor3 = Color3.fromRGB(0, 0, 0)
 G2L["3"].Text = ""
 G2L["3"].Name = "ExportWindow"
 G2L["3"].MultiLine = true
-G2L["3"].ClearTextOnFocus = true
+G2L["3"].ClearTextOnFocus = false
 
 -- Create the RefreshButton
 G2L["4"] = Instance.new("TextButton")
