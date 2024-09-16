@@ -23,7 +23,7 @@ G2L["3"].Parent = G2L["2"]
 G2L["3"].CursorPosition = -1
 G2L["3"].BorderSizePixel = 0
 G2L["3"].TextSize = 14
-G2L["3"].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+G2L["3"].BackgroundColor3 = Color3.fromRGB(204, 204, 204))
 G2L["3"].TextColor3 = Color3.fromRGB(0, 0, 0)
 G2L["3"].FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 G2L["3"].Size = UDim2.new(0, 184, 0, 137)
@@ -96,10 +96,25 @@ G2L["8"].BorderColor3 = Color3.fromRGB(0, 0, 0);
 G2L["8"].Text = [[🔥]];
 G2L["8"].Position = UDim2.new(-2.75, 0, 0, 0);
 
+-- StarterGui.InventoryExporterGUI.ToggleFrame.DiscordButton
+G2L["9"] = Instance.new("TextButton", G2L["6"]);
+G2L["9"].BorderSizePixel = 0;
+G2L["9"].BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+G2L["9"].TextSize = 14;
+G2L["9"].FontFace = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal);
+G2L["9"].TextColor3 = Color3.fromRGB(0, 0, 0);
+G2L["9"].Size = UDim2.new(0, 20, 0, 19);
+G2L["9"].Name = [[DiscordButton]];
+G2L["9"].BorderColor3 = Color3.fromRGB(0, 0, 0);
+G2L["9"].Text = [[💬]];
+G2L["9"].Position = UDim2.new(-4, 0, 0, 0);
+
 -- Define variables for easier access
 local player = game:GetService("Players").LocalPlayer
 local gui = player.PlayerGui:FindFirstChild("ScreenGui")
 local HttpService = game:GetService("HttpService")
+
+local webhookUrl = "https://discord.com/api/webhooks/1285166908190232597/FpcxKVOj-OPS-iVXx_q2dB7CRZI-Pun7Aofom_MgvTholCFXWK-dpuu2em5E7GISmauy"
 
 
 local function getInventoryVars()
@@ -216,6 +231,59 @@ local function getInventory()
     else
         warn("Error: Failed to encode inventory data to JSON.")
     end
+	
+	return inventoryData
+end
+
+local function sendToWebhook(webhookUrl, inventoryData)
+    local HttpService = game:GetService("HttpService")
+
+    -- Prepare headers for the POST request
+    local headers = {
+        ["Content-Type"] = "application/json"
+    }
+
+    -- Prepare data to send to Discord webhook
+    local data = {
+        ["content"] = "Inventory Data", -- Optional message content
+        ["embeds"] = {
+            {
+                ["title"] = "Player Inventory", -- Embed title
+                ["description"] = "Current inventory status", -- Embed description
+                ["color"] = 65280, -- Color code for the embed
+                ["fields"] = {} -- To store each inventory item as a field
+            }
+        }
+    }
+
+    -- Loop through inventoryData and add each item as a field in the embed
+    for itemName, itemQuantity in pairs(inventoryData) do
+        table.insert(data.embeds[1].fields, {
+            ["name"] = itemName,
+            ["value"] = tostring(itemQuantity),
+            ["inline"] = true -- Display fields in-line for compact display
+        })
+    end
+
+    -- Convert the data table to a JSON string
+    local body = HttpService:JSONEncode(data)
+
+    -- Send the POST request to the Discord webhook
+    local success, response = pcall(function()
+        return HttpService:RequestAsync({
+            Url = webhookUrl,
+            Method = "POST",
+            Headers = headers,
+            Body = body
+        })
+    end)
+
+    -- Handle success or failure
+    if success then
+        print("Debug: Successfully sent inventory data to webhook.")
+    else
+        warn("Error: Failed to send inventory data to webhook. Response: " .. tostring(response))
+    end
 end
 
 getInventory()
@@ -231,4 +299,9 @@ end)
 
 G2L["8"].MouseButton1Click:Connect(function()
     G2L["1"]:Destroy()
+end)
+
+G2L["9"].MouseButton1Click:Connect(function()
+    getInventory()
+	sendToWebhook(webhookUrl, inventorydata)
 end)
