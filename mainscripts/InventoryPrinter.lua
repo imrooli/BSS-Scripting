@@ -168,6 +168,14 @@ local function getInventory()
         warn("Warning: Unable to find Honey value in CoreStats.")
     end
 
+	local jsonData = HttpService:JSONEncode(inventoryData)
+    if jsonData then
+        print("Debug: Successfully encoded inventory data to JSON.")
+        G2L["3"].Text = jsonData
+    else
+        warn("Error: Failed to encode inventory data to JSON.")
+    end
+
     return inventoryData
 end
 
@@ -211,6 +219,7 @@ local function sendToWebhook(webhookUrl, inventoryData)
     else
         warn("Error: Failed to send inventory data to webhook. Response: " .. tostring(response))
     end
+	
 end
 
 -- Connect button click events
