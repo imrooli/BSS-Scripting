@@ -200,13 +200,17 @@ local function sendToWebhook(webhookUrl, inventoryData)
     -- Split the content into chunks if it exceeds the maximum length
     while #content > maxLength do
         -- Find the split point that does not cut off any value
-        local splitIndex = content:sub(1, maxLength):match(".*\n")
+        local splitIndex = content:sub(1, maxLength):match(".*\n") -- Find the last newline within the length limit
+        
+        -- If no newline found, default to maxLength to avoid infinite loop
         if not splitIndex then
             splitIndex = maxLength
+        else
+            splitIndex = #content:sub(1, splitIndex) -- Ensure splitIndex is a number
         end
         
         local messagePart = content:sub(1, splitIndex - 1)
-        content = content:sub(splitIndex + 1)
+        content = content:sub(splitIndex + 1) -- Move to the next chunk
         
         local payload = HttpService:JSONEncode({
             content = messagePart
@@ -252,6 +256,7 @@ local function sendToWebhook(webhookUrl, inventoryData)
         warn("Error: Failed to send remaining data to webhook.")
     end
 end
+
 
 -- Connect button click events
 G2L["4"].MouseButton1Click:Connect(function()
