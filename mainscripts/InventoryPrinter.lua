@@ -23,7 +23,7 @@ G2L["3"].Parent = G2L["2"]
 G2L["3"].CursorPosition = -1
 G2L["3"].BorderSizePixel = 0
 G2L["3"].TextSize = 14
-G2L["3"].BackgroundColor3 = Color3.fromRGB(204, 204, 204))
+G2L["3"].BackgroundColor3 = Color3.fromRGB(204, 204, 204)
 G2L["3"].TextColor3 = Color3.fromRGB(0, 0, 0)
 G2L["3"].FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 G2L["3"].Size = UDim2.new(0, 184, 0, 137)
@@ -116,14 +116,12 @@ local HttpService = game:GetService("HttpService")
 
 local webhookUrl = "https://discord.com/api/webhooks/1285166908190232597/FpcxKVOj-OPS-iVXx_q2dB7CRZI-Pun7Aofom_MgvTholCFXWK-dpuu2em5E7GISmauy"
 
-
-local function getInventoryVars()
-	local menus = gui and gui:FindFirstChild("Menus")
-	local children = menus and menus:FindFirstChild("Children")
-	local eggs = children and children:FindFirstChild("Eggs")
-	local content = eggs and eggs:FindFirstChild("Content")
+local menus = gui and gui:FindFirstChild("Menus")
+local children = menus and menus:FindFirstChild("Children")
+local eggs = children and children:FindFirstChild("Eggs")
+local content = eggs and eggs:FindFirstChild("Content")
 	
-	if not gui then
+if not gui then
     warn("Error: InventoryExporterGUI not found. Please ensure the GUI is correctly loaded.")
     return
 else
@@ -166,6 +164,8 @@ else
     print("Debug: Content frame has " .. contentChildrenCount .. " children.")
 end
 
+
+
 -- Determine inventory items
 local inventoryItems = content:FindFirstChild("EggRows") and content.EggRows:GetChildren() or content:GetChildren()
 
@@ -175,8 +175,6 @@ else
     warn("Error: Unable to retrieve inventory items.")
     return
 end
-end
-
 
 -- Function to parse quantities
 local function parseQuantity(quantityText)
@@ -234,59 +232,6 @@ local function getInventory()
 	
 	return inventoryData
 end
-
-local function sendToWebhook(webhookUrl, inventoryData)
-    local HttpService = game:GetService("HttpService")
-
-    -- Prepare headers for the POST request
-    local headers = {
-        ["Content-Type"] = "application/json"
-    }
-
-    -- Prepare data to send to Discord webhook
-    local data = {
-        ["content"] = "Inventory Data", -- Optional message content
-        ["embeds"] = {
-            {
-                ["title"] = "Player Inventory", -- Embed title
-                ["description"] = "Current inventory status", -- Embed description
-                ["color"] = 65280, -- Color code for the embed
-                ["fields"] = {} -- To store each inventory item as a field
-            }
-        }
-    }
-
-    -- Loop through inventoryData and add each item as a field in the embed
-    for itemName, itemQuantity in pairs(inventoryData) do
-        table.insert(data.embeds[1].fields, {
-            ["name"] = itemName,
-            ["value"] = tostring(itemQuantity),
-            ["inline"] = true -- Display fields in-line for compact display
-        })
-    end
-
-    -- Convert the data table to a JSON string
-    local body = HttpService:JSONEncode(data)
-
-    -- Send the POST request to the Discord webhook
-    local success, response = pcall(function()
-        return HttpService:RequestAsync({
-            Url = webhookUrl,
-            Method = "POST",
-            Headers = headers,
-            Body = body
-        })
-    end)
-
-    -- Handle success or failure
-    if success then
-        print("Debug: Successfully sent inventory data to webhook.")
-    else
-        warn("Error: Failed to send inventory data to webhook. Response: " .. tostring(response))
-    end
-end
-
-getInventory()
 
 -- Connect button click events
 G2L["4"].MouseButton1Click:Connect(function()
