@@ -116,6 +116,8 @@ local HttpService = game:GetService("HttpService")
 
 local webhookUrl = "https://discord.com/api/webhooks/1285166908190232597/FpcxKVOj-OPS-iVXx_q2dB7CRZI-Pun7Aofom_MgvTholCFXWK-dpuu2em5E7GISmauy"
 
+local request = request or http_request or httprequest or http
+
 local function getInventoryVars()
     local menus = gui and gui:FindFirstChild("Menus")
     local children = menus and menus:FindFirstChild("Children")
@@ -168,7 +170,13 @@ local function getInventory()
         warn("Warning: Unable to find Honey value in CoreStats.")
     end
 
-	local jsonData = HttpService:JSONEncode(inventoryData)
+    -- Debug prints to verify inventory data
+    print("Debug: Inventory Data")
+    for k, v in pairs(inventoryData) do
+        print(k, v)
+    end
+
+    local jsonData = HttpService:JSONEncode(inventoryData)
     if jsonData then
         print("Debug: Successfully encoded inventory data to JSON.")
         G2L["3"].Text = jsonData
@@ -179,47 +187,70 @@ local function getInventory()
     return inventoryData
 end
 
--- Function to send inventory data to Discord webhook
+-- Function to send data to the Discord webhook
 local function sendToWebhook(webhookUrl, inventoryData)
-    if not inventoryData then return end
-    
-    local headers = {["Content-Type"] = "application/json"}
-    local data = {
-        ["content"] = "Inventory Data",
-        ["embeds"] = {
-            {
-                ["title"] = "Player Inventory",
-                ["description"] = "Current inventory status",
-                ["color"] = 65280,
-                ["fields"] = {}
-            }
-        }
-    }
-
+    local content = "Inventory Data:\n"
     for itemName, itemQuantity in pairs(inventoryData) do
-        table.insert(data.embeds[1].fields, {
-            ["name"] = itemName,
-            ["value"] = tostring(itemQuantity),
-            ["inline"] = true
-        })
+        content = content .. itemName .. ": " .. itemQuantity .. "\n"
     end
 
-    local body = HttpService:JSONEncode(data)
-    local success, response = pcall(function()
-        return HttpService:RequestAsync({
+    -- Define the maximum message length for Discord
+    local maxLength = 2000
+
+    -- Split the content into chunks if it exceeds the maximum length
+    while #content > maxLength do
+        -- Find the split point that does not cut off any value
+        local splitIndex = content:sub(1, maxLength):match(".*\n")
+        if not splitIndex then
+            splitIndex = maxLength
+        end
+        
+        local messagePart = content:sub(1, splitIndex - 1)
+        content = content:sub(splitIndex + 1)
+        
+        local payload = HttpService:JSONEncode({
+            content = messagePart
+        })
+        
+        local response = request({
             Url = webhookUrl,
             Method = "POST",
-            Headers = headers,
-            Body = body
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = payload
         })
-    end)
-
-    if success then
-        print("Debug: Successfully sent inventory data to webhook.")
-    else
-        warn("Error: Failed to send inventory data to webhook. Response: " .. tostring(response))
+        
+        if response then
+            print("Debug: Successfully sent part of the data to webhook.")
+            print("Debug: Response status code: " .. tostring(response.StatusCode))
+            print("Debug: Response body: " .. tostring(response.Body))
+        else
+            warn("Error: Failed to send part of the data to webhook.")
+        end
     end
-	
+    
+    -- Send the remaining content if it's within the limit
+    local payload = HttpService:JSONEncode({
+        content = content
+    })
+    
+    local response = request({
+        Url = webhookUrl,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = payload
+    })
+    
+    if response then
+        print("Debug: Successfully sent remaining data to webhook.")
+        print("Debug: Response status code: " .. tostring(response.StatusCode))
+        print("Debug: Response body: " .. tostring(response.Body))
+    else
+        warn("Error: Failed to send remaining data to webhook.")
+    end
 end
 
 -- Connect button click events
@@ -239,3 +270,5 @@ G2L["9"].MouseButton1Click:Connect(function()
     local inventoryData = getInventory()
     sendToWebhook(webhookUrl, inventoryData)
 end)
+
+
