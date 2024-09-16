@@ -96,20 +96,19 @@ G2L["8"].BorderColor3 = Color3.fromRGB(0, 0, 0);
 G2L["8"].Text = [[🔥]];
 G2L["8"].Position = UDim2.new(-2.75, 0, 0, 0);
 
-
-
 -- Define variables for easier access
 local player = game:GetService("Players").LocalPlayer
 local gui = player.PlayerGui:FindFirstChild("ScreenGui")
 local HttpService = game:GetService("HttpService")
 
--- Check GUI elements
-local menus = gui and gui:FindFirstChild("Menus")
-local children = menus and menus:FindFirstChild("Children")
-local eggs = children and children:FindFirstChild("Eggs")
-local content = eggs and eggs:FindFirstChild("Content")
 
-if not gui then
+local function getInventoryVars()
+	local menus = gui and gui:FindFirstChild("Menus")
+	local children = menus and menus:FindFirstChild("Children")
+	local eggs = children and children:FindFirstChild("Eggs")
+	local content = eggs and eggs:FindFirstChild("Content")
+	
+	if not gui then
     warn("Error: InventoryExporterGUI not found. Please ensure the GUI is correctly loaded.")
     return
 else
@@ -161,6 +160,8 @@ else
     warn("Error: Unable to retrieve inventory items.")
     return
 end
+end
+
 
 -- Function to parse quantities
 local function parseQuantity(quantityText)
@@ -183,6 +184,7 @@ end
 
 -- Retrieve and format inventory data
 local function getInventory()
+	getInventoryVars()
     local inventoryData = {}
 
     for _, eggRow in pairs(inventoryItems) do
