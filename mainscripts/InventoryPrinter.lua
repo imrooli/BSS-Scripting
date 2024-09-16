@@ -116,121 +116,101 @@ local HttpService = game:GetService("HttpService")
 
 local webhookUrl = "https://discord.com/api/webhooks/1285166908190232597/FpcxKVOj-OPS-iVXx_q2dB7CRZI-Pun7Aofom_MgvTholCFXWK-dpuu2em5E7GISmauy"
 
-local menus = gui and gui:FindFirstChild("Menus")
-local children = menus and menus:FindFirstChild("Children")
-local eggs = children and children:FindFirstChild("Eggs")
-local content = eggs and eggs:FindFirstChild("Content")
-	
-if not gui then
-    warn("Error: InventoryExporterGUI not found. Please ensure the GUI is correctly loaded.")
-    return
-else
-    print("Debug: ScreenGui found.")
-end
-
-if not menus then
-    warn("Error: Menus not found.")
-    return
-else
-    print("Debug: Menus found.")
-end
-
-if not children then
-    warn("Error: Children not found.")
-    return
-else
-    print("Debug: Children folder found.")
-end
-
-if not eggs then
-    warn("Error: Eggs menu not found.")
-    return
-else
-    print("Debug: Eggs menu found.")
+local function getInventoryVars()
+    local menus = gui and gui:FindFirstChild("Menus")
+    local children = menus and menus:FindFirstChild("Children")
+    local eggs = children and children:FindFirstChild("Eggs")
+    local content = eggs and eggs:FindFirstChild("Content")
     
-    -- Count and print number of children in the Eggs menu
-    local eggsChildrenCount = #eggs:GetChildren()
-    print("Debug: Eggs menu has " .. eggsChildrenCount .. " children.")
-end
-
-if not content then
-    warn("Error: Content frame not found.")
-    return
-else
-    print("Debug: Content frame found.")
+    if not (gui and menus and children and eggs and content) then
+        warn("Error: One or more required GUI elements are missing.")
+        return nil
+    end
     
-    -- Count and print number of children in the Content frame
-    local contentChildrenCount = #content:GetChildren()
-    print("Debug: Content frame has " .. contentChildrenCount .. " children.")
-end
-
-
-
--- Determine inventory items
-local inventoryItems = content:FindFirstChild("EggRows") and content.EggRows:GetChildren() or content:GetChildren()
-
-if inventoryItems then
-    print("Debug: Successfully retrieved inventory items.")
-else
-    warn("Error: Unable to retrieve inventory items.")
-    return
+    print("Debug: All required GUI elements found.")
+    return content:FindFirstChild("EggRows") and content.EggRows:GetChildren() or content:GetChildren()
 end
 
 -- Function to parse quantities
 local function parseQuantity(quantityText)
     if not quantityText or quantityText == "" then 
-        warn("Warning: Quantity text is missing or empty.")
         return 0 
     end
 
-    print("Debug: Parsing quantity: " .. quantityText)
     quantityText = string.gsub(quantityText, "x", "")
     local numerator = string.match(quantityText, "(%d+)/")
-
-    if numerator then
-        print("Debug: Fractional quantity detected: " .. numerator)
-        return tonumber(numerator)
-    else
-        return tonumber(quantityText) or 0
-    end
+    return tonumber(numerator) or tonumber(quantityText) or 0
 end
 
 -- Retrieve and format inventory data
 local function getInventory()
-	getInventoryVars()
+    local inventoryItems = getInventoryVars()
+    if not inventoryItems then return end
+    
     local inventoryData = {}
 
     for _, eggRow in pairs(inventoryItems) do
-        if eggRow:FindFirstChild("TypeName") and eggRow:FindFirstChild("EggSlot") then
-            local itemName = eggRow.TypeName.Text
-            local itemQuantity = parseQuantity(eggRow.EggSlot.Count.Text)
-
-            print("Debug: Retrieved item - Name: " .. itemName .. ", Quantity: " .. itemQuantity)
-
+        local typeName = eggRow:FindFirstChild("TypeName")
+        local eggSlot = eggRow:FindFirstChild("EggSlot")
+        
+        if typeName and eggSlot then
+            local itemName = typeName.Text
+            local itemQuantity = parseQuantity(eggSlot.Count.Text)
             inventoryData[itemName] = itemQuantity
         else
             warn("Warning: Missing TypeName or EggSlot in eggRow.")
         end
     end
 
-    -- Add honey value
     if player.CoreStats and player.CoreStats.Honey then
         inventoryData["Honey"] = player.CoreStats.Honey.Value
-        print("Debug: Added Honey value: " .. player.CoreStats.Honey.Value)
     else
         warn("Warning: Unable to find Honey value in CoreStats.")
     end
 
-    -- Convert to JSON and update the TextBox
-    local jsonData = HttpService:JSONEncode(inventoryData)
-    if jsonData then
-        print("Debug: Successfully encoded inventory data to JSON.")
-        G2L["3"].Text = jsonData
-    else
-        warn("Error: Failed to encode inventory data to JSON.")
+    return inventoryData
+end
+
+-- Function to send inventory data to Discord webhook
+local function sendToWebhook(webhookUrl, inventoryData)
+    if not inventoryData then return end
+    
+    local headers = {["Content-Type"] = "application/json"}
+    local data = {
+        ["content"] = "Inventory Data",
+        ["embeds"] = {
+            {
+                ["title"] = "Player Inventory",
+                ["description"] = "Current inventory status",
+                ["color"] = 65280,
+                ["fields"] = {}
+            }
+        }
+    }
+
+    for itemName, itemQuantity in pairs(inventoryData) do
+        table.insert(data.embeds[1].fields, {
+            ["name"] = itemName,
+            ["value"] = tostring(itemQuantity),
+            ["inline"] = true
+        })
     end
-	
-	return inventoryData
+
+    local body = HttpService:JSONEncode(data)
+    local success, response = pcall(function()
+        return HttpService:RequestAsync({
+            Url = webhookUrl,
+            Method = "POST",
+            Headers = headers,
+            Body = body
+        })
+    end)
+
+    if success then
+        print("Debug: Successfully sent inventory data to webhook.")
+    else
+        warn("Error: Failed to send inventory data to webhook. Response: " .. tostring(response))
+    end
 end
 
 -- Connect button click events
@@ -247,6 +227,6 @@ G2L["8"].MouseButton1Click:Connect(function()
 end)
 
 G2L["9"].MouseButton1Click:Connect(function()
-    getInventory()
-	sendToWebhook(webhookUrl, inventorydata)
+    local inventoryData = getInventory()
+    sendToWebhook(webhookUrl, inventoryData)
 end)
