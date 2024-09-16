@@ -109,6 +109,19 @@ G2L["9"].BorderColor3 = Color3.fromRGB(0, 0, 0);
 G2L["9"].Text = [[💬]];
 G2L["9"].Position = UDim2.new(-4, 0, 0, 0);
 
+-- StarterGui.InventoryExporterGUI.ToggleFrame.Discord0Button
+G2L["a"] = Instance.new("TextButton", G2L["6"]);
+G2L["a"]["BorderSizePixel"] = 0;
+G2L["a"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
+G2L["a"]["TextSize"] = 14;
+G2L["a"]["FontFace"] = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal);
+G2L["a"]["TextColor3"] = Color3.fromRGB(0, 0, 0);
+G2L["a"]["Size"] = UDim2.new(0, 20, 0, 19);
+G2L["a"]["Name"] = [[Discord0Button]];
+G2L["a"]["BorderColor3"] = Color3.fromRGB(0, 0, 0);
+G2L["a"]["Text"] = [[0️⃣]];
+G2L["a"]["Position"] = UDim2.new(-5.349999904632568, 0, 0, 0);
+
 -- Define variables for easier access
 local player = game:GetService("Players").LocalPlayer
 local gui = player.PlayerGui:FindFirstChild("ScreenGui")
@@ -245,6 +258,19 @@ local function sendToWebhook(webhookUrl, inventoryData)
     end
 end
 
+-- Function to filter out items with a quantity of 0
+local function filterZeroQuantity(inventoryData)
+    local filteredData = {}
+    
+    for itemName, itemQuantity in pairs(inventoryData) do
+        if itemQuantity > 0 then
+            filteredData[itemName] = itemQuantity
+        end
+    end
+    
+    return filteredData
+end
+
 
 
 -- Connect button click events
@@ -263,6 +289,12 @@ end)
 G2L["9"].MouseButton1Click:Connect(function()
     local inventoryData = getInventory()
     sendToWebhook(webhookUrl, inventoryData)
+end)
+
+G2L["a"].MouseButton1Click:Connect(function()
+    local inventoryData = getInventory()
+    local filteredData = filterZeroQuantity(inventoryData)
+    sendToWebhook(webhookUrl, filteredData)
 end)
 
 
