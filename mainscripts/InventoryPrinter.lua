@@ -196,24 +196,34 @@ local function sendToWebhook(webhookUrl, inventoryData)
 
     -- Define the maximum message length for Discord
     local maxLength = 2000
-
-    -- Split the content into chunks if it exceeds the maximum length
-    while #content > maxLength do
-        -- Find the split point that does not cut off any value
-        local splitIndex = content:sub(1, maxLength):match(".*\n") -- Find the last newline within the length limit
+    
+    -- Function to split content by lines without breaking inventory names and values
+    local function splitContent(content, maxLength)
+        local chunks = {}
+        local currentChunk = ""
         
-        -- If no newline found, default to maxLength to avoid infinite loop
-        if not splitIndex then
-            splitIndex = maxLength
-        else
-            splitIndex = #content:sub(1, splitIndex) -- Ensure splitIndex is a number
+        for line in content:gmatch("[^\r\n]+") do
+            if #currentChunk + #line + 1 > maxLength then
+                table.insert(chunks, currentChunk)
+                currentChunk = line .. "\n"
+            else
+                currentChunk = currentChunk .. line .. "\n"
+            end
         end
         
-        local messagePart = content:sub(1, splitIndex - 1)
-        content = content:sub(splitIndex + 1) -- Move to the next chunk
+        if #currentChunk > 0 then
+            table.insert(chunks, currentChunk)
+        end
         
+        return chunks
+    end
+    
+    -- Split the content into chunks if it exceeds the maximum length
+    local chunks = splitContent(content, maxLength)
+    
+    for _, chunk in ipairs(chunks) do
         local payload = HttpService:JSONEncode({
-            content = messagePart
+            content = chunk
         })
         
         local response = request({
@@ -226,36 +236,15 @@ local function sendToWebhook(webhookUrl, inventoryData)
         })
         
         if response then
-            print("Debug: Successfully sent part of the data to webhook.")
+            print("Debug: Successfully sent chunk to webhook.")
             print("Debug: Response status code: " .. tostring(response.StatusCode))
             print("Debug: Response body: " .. tostring(response.Body))
         else
-            warn("Error: Failed to send part of the data to webhook.")
+            warn("Error: Failed to send chunk to webhook.")
         end
     end
-    
-    -- Send the remaining content if it's within the limit
-    local payload = HttpService:JSONEncode({
-        content = content
-    })
-    
-    local response = request({
-        Url = webhookUrl,
-        Method = "POST",
-        Headers = {
-            ["Content-Type"] = "application/json"
-        },
-        Body = payload
-    })
-    
-    if response then
-        print("Debug: Successfully sent remaining data to webhook.")
-        print("Debug: Response status code: " .. tostring(response.StatusCode))
-        print("Debug: Response body: " .. tostring(response.Body))
-    else
-        warn("Error: Failed to send remaining data to webhook.")
-    end
 end
+
 
 
 -- Connect button click events
