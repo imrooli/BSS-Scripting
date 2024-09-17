@@ -252,11 +252,11 @@ local function sendToWebhook(webhookUrl, inventoryData, outputFormat)
     local maxFields = 25
 
     local function createPlainTextContent(inventoryData)
-        local content = "Inventory Data:\n"
+        local content = ""
         for itemName, itemQuantity in pairs(inventoryData) do
             content = content .. itemName .. ": " .. itemQuantity .. "\n"
         end
-        return content
+        return "```" .. content .. "```"
     end
 
     local function createEmbedContent(inventoryData)
@@ -288,7 +288,7 @@ local function sendToWebhook(webhookUrl, inventoryData, outputFormat)
     end
 
     local function createJsonContent(inventoryData)
-        return HttpService:JSONEncode(inventoryData)
+        return "```json\n" .. HttpService:JSONEncode(inventoryData) .. "\n```"
     end
 
     -- Function to truncate content to fit within Discord's character limit
@@ -338,7 +338,7 @@ local function sendToWebhook(webhookUrl, inventoryData, outputFormat)
         end
 
         print("Debug: Sending message part " .. i .. ": " .. postPayload)
-        local response = request({
+        local response = HttpService:RequestAsync({
             Url = webhookUrl,
             Method = "POST",
             Headers = {
