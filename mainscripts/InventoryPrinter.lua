@@ -122,14 +122,31 @@ G2L["a"]["BorderColor3"] = Color3.fromRGB(0, 0, 0);
 G2L["a"]["Text"] = [[0️⃣]];
 G2L["a"]["Position"] = UDim2.new(-5.349999904632568, 0, 0, 0);
 
+-- StarterGui.InventoryExporterGUI.ToggleFrame.WebhookMode
+G2L["b"] = Instance.new("TextButton", G2L["6"]);
+G2L["b"]["BorderSizePixel"] = 0;
+G2L["b"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
+G2L["b"]["TextSize"] = 14;
+G2L["b"]["FontFace"] = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal);
+G2L["b"]["TextColor3"] = Color3.fromRGB(0, 0, 0);
+G2L["b"]["Size"] = UDim2.new(0, 47, 0, 19);
+G2L["b"]["Name"] = [[WebhookMode]];
+G2L["b"]["BorderColor3"] = Color3.fromRGB(0, 0, 0);
+G2L["b"]["Text"] = [[EMBED]];
+G2L["b"]["Position"] = UDim2.new(-8.100000381469727, 0, 0, 0);
+
 -- Define variables for easier access
 local player = game:GetService("Players").LocalPlayer
 local gui = player.PlayerGui:FindFirstChild("ScreenGui")
 local HttpService = game:GetService("HttpService")
+local outputFormat = "TEXT"
+
 
 local webhookUrl = "https://discord.com/api/webhooks/1285166908190232597/FpcxKVOj-OPS-iVXx_q2dB7CRZI-Pun7Aofom_MgvTholCFXWK-dpuu2em5E7GISmauy"
 
 local request = request or http_request or httprequest or http
+
+-- functions
 
 local function getInventoryVars()
     local menus = gui and gui:FindFirstChild("Menus")
@@ -156,6 +173,35 @@ local function parseQuantity(quantityText)
     local numerator = string.match(quantityText, "(%d+)/")
     return tonumber(numerator) or tonumber(quantityText) or 0
 end
+
+-- Function to filter out items with a quantity of 0
+local function filterZeroQuantity(inventoryData)
+    local filteredData = {}
+    
+    for itemName, itemQuantity in pairs(inventoryData) do
+        if itemQuantity > 0 then
+            filteredData[itemName] = itemQuantity
+        end
+    end
+    
+    return filteredData
+end
+
+
+local function truncateContent(content, maxLength)
+    local result = {}
+    local currentLength = 0
+
+    while #content > maxLength do
+        local splitIndex = content:sub(1, maxLength):match(".*()") or maxLength
+        table.insert(result, content:sub(1, splitIndex - 1))
+        content = content:sub(splitIndex)
+    end
+
+    table.insert(result, content)
+    return result
+end
+
 
 -- Retrieve and format inventory data
 local function getInventory()
@@ -200,77 +246,116 @@ local function getInventory()
     return inventoryData
 end
 
--- Function to send data to the Discord webhook
-local function sendToWebhook(webhookUrl, inventoryData)
-    local content = "Inventory Data:\n"
-    for itemName, itemQuantity in pairs(inventoryData) do
-        content = content .. itemName .. ": " .. itemQuantity .. "\n"
+local function sendToWebhook(webhookUrl, inventoryData, outputFormat)
+    local maxLength = 2000
+    local maxEmbedLength = 6000
+    local maxFields = 25
+
+    local function createPlainTextContent(inventoryData)
+        local content = "Inventory Data:\n"
+        for itemName, itemQuantity in pairs(inventoryData) do
+            content = content .. itemName .. ": " .. itemQuantity .. "\n"
+        end
+        return content
     end
 
-    -- Define the maximum message length for Discord
-    local maxLength = 2000
-    
-    -- Function to split content by lines without breaking inventory names and values
-    local function splitContent(content, maxLength)
-        local chunks = {}
-        local currentChunk = ""
-        
-        for line in content:gmatch("[^\r\n]+") do
-            if #currentChunk + #line + 1 > maxLength then
-                table.insert(chunks, currentChunk)
-                currentChunk = line .. "\n"
-            else
-                currentChunk = currentChunk .. line .. "\n"
+    local function createEmbedContent(inventoryData)
+        local fields = {}
+        for itemName, itemQuantity in pairs(inventoryData) do
+            table.insert(fields, {
+                name = itemName,
+                value = tostring(itemQuantity),
+                inline = true
+            })
+        end
+
+        local embeds = {}
+        while #fields > 0 do
+            local embedFields = {}
+            while #embedFields < maxFields and #fields > 0 do
+                table.insert(embedFields, table.remove(fields, 1))
             end
+
+            local embedData = {
+                title = "Inventory Data",
+                fields = embedFields,
+                color = 3447003 -- Blue color
+            }
+            table.insert(embeds, embedData)
         end
-        
-        if #currentChunk > 0 then
-            table.insert(chunks, currentChunk)
-        end
-        
-        return chunks
+
+        return embeds
     end
-    
-    -- Split the content into chunks if it exceeds the maximum length
-    local chunks = splitContent(content, maxLength)
-    
-    for _, chunk in ipairs(chunks) do
-        local payload = HttpService:JSONEncode({
-            content = chunk
-        })
-        
+
+    local function createJsonContent(inventoryData)
+        return HttpService:JSONEncode(inventoryData)
+    end
+
+    -- Function to truncate content to fit within Discord's character limit
+    local function truncateContent(content, maxLength)
+        local messages = {}
+        while #content > maxLength do
+            local splitIndex = content:sub(1, maxLength):match(".*()") or maxLength
+            local messagePart = content:sub(1, splitIndex - 1)
+            table.insert(messages, messagePart)
+            content = content:sub(splitIndex)
+        end
+        if #content > 0 then
+            table.insert(messages, content)
+        end
+        return messages
+    end
+
+    -- Choose the format and prepare messages
+    local messages
+    if outputFormat == "EMBED" then
+        local embedData = createEmbedContent(inventoryData)
+        local jsonData = HttpService:JSONEncode({ embeds = embedData })
+        messages = truncateContent(jsonData, maxLength)
+        print("Debug: Embed format selected.")
+        print("Debug: Embed JSON data: " .. jsonData)
+    elseif outputFormat == "JSON" then
+        local jsonData = createJsonContent(inventoryData)
+        messages = truncateContent(jsonData, maxLength)
+        print("Debug: JSON format selected.")
+        print("Debug: JSON data: " .. jsonData)
+    else
+        local textContent = createPlainTextContent(inventoryData)
+        messages = truncateContent(textContent, maxLength)
+        print("Debug: Plain text format selected.")
+        print("Debug: Plain text content: " .. textContent)
+    end
+
+    -- Send each chunk of the message
+    for i, messagePart in ipairs(messages) do
+        local postPayload
+        if outputFormat == "EMBED" then
+            postPayload = HttpService:JSONEncode({ embeds = { { title = "Inventory Data", description = messagePart, color = 3447003 } } })
+        elseif outputFormat == "JSON" then
+            postPayload = HttpService:JSONEncode({ content = messagePart })
+        else
+            postPayload = HttpService:JSONEncode({ content = messagePart })
+        end
+
+        print("Debug: Sending message part " .. i .. ": " .. postPayload)
         local response = request({
             Url = webhookUrl,
             Method = "POST",
             Headers = {
                 ["Content-Type"] = "application/json"
             },
-            Body = payload
+            Body = postPayload
         })
-        
+
         if response then
-            print("Debug: Successfully sent chunk to webhook.")
+            print("Debug: Successfully sent part of the data to webhook.")
             print("Debug: Response status code: " .. tostring(response.StatusCode))
             print("Debug: Response body: " .. tostring(response.Body))
         else
-            warn("Error: Failed to send chunk to webhook.")
+            warn("Error: Failed to send part of the data to webhook.")
         end
     end
 end
-
--- Function to filter out items with a quantity of 0
-local function filterZeroQuantity(inventoryData)
-    local filteredData = {}
-    
-    for itemName, itemQuantity in pairs(inventoryData) do
-        if itemQuantity > 0 then
-            filteredData[itemName] = itemQuantity
-        end
-    end
-    
-    return filteredData
-end
-
 
 
 -- Connect button click events
@@ -288,13 +373,27 @@ end)
 
 G2L["9"].MouseButton1Click:Connect(function()
     local inventoryData = getInventory()
-    sendToWebhook(webhookUrl, inventoryData)
+    sendToWebhook(webhookUrl, inventoryData, outputFormat)
 end)
 
 G2L["a"].MouseButton1Click:Connect(function()
     local inventoryData = getInventory()
     local filteredData = filterZeroQuantity(inventoryData)
-    sendToWebhook(webhookUrl, filteredData)
+    sendToWebhook(webhookUrl, filteredData, outputFormat)
+end)
+
+G2L["b"].MouseButton1Click:Connect(function()
+    if outputFormat == "TEXT" then
+        outputFormat = "EMBED"
+        G2L["b"].Text = "JSON"
+    elseif outputFormat == "EMBED" then
+        outputFormat = "JSON"
+        G2L["b"].Text = "TEXT"
+    else
+        outputFormat = "TEXT"
+        G2L["b"].Text = "EMBED"
+    end
+    print("Debug: Switched to " .. outputFormat .. " format.")
 end)
 
 
