@@ -5,7 +5,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local selectedTeleport = nil
 local selectedTeleportName = nil
 local selectedExportFormat = nil
-local discordWebhook = "https://discord.com/api/webhooks/1285166908190232597/FpcxKVOj-OPS-iVXx_q2dB7CRZI-Pun7Aofom_MgvTholCFXWK-dpuu2em5E7GISmauy"
+local discordWebhook = "https://discord.com/api/webhooks/1294264217892950057/bhdRQJSiYOmWeUknFMIrlPjFVJ8lo5JBpYckOEbzrH8Ft6GCxrsR9_YBi3WoJVbpZefq"
 local HttpService = game:GetService("HttpService")
 local request = request or http_request or httprequest or http
 
@@ -657,4 +657,3 @@ _G.BlenderQueueSlot9Label = BlenderTab:CreateLabel("Slot 9: *empty*")
 _G.BlenderQueueSlot10Label = BlenderTab:CreateLabel("Slot 10: *empty*")
 _G.BlenderQueueSlot11Label = BlenderTab:CreateLabel("Slot 11: *empty*")
 _G.BlenderQueueSlot12Label = BlenderTab:CreateLabel("Slot 12: *empty*")
-
