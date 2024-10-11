@@ -201,7 +201,7 @@ local InventoryExportSection = InventoryExportTab:CreateSection("Inventory Expor
 
 local function getInventoryVars()
 	local gui = player.PlayerGui:FindFirstChild("ScreenGui")
-	
+
 	local menus = gui and gui:FindFirstChild("Menus")
 	local children = menus and menus:FindFirstChild("Children")
 	local eggs = children and children:FindFirstChild("Eggs")
@@ -338,7 +338,7 @@ local function sendToWebhook(discordWebhook, inventoryData, selectedExportFormat
 		print("Debug: JSON format selected.")
 		print("Debug: JSON data: " .. jsonData)
 	end
-	
+
 	-- Send each chunk of the message
 	for i, messagePart in ipairs(messages) do
 		local postPayload = HttpService:JSONEncode({ content = messagePart })
@@ -400,248 +400,645 @@ local ExportInventoryButton = InventoryExportTab:CreateButton({
 	end,
 })
 
--- Blender Tab {
+
 
 -- Blender Functions {
 
-local AutoBlenderEnabled = false
-local formattedBlenderID = "RedExtract"
-local QuantityRequested = 1
-local BlenderQueue = {}
-local maxDisplaySlots = 12
-local craftTimePerItem = 300 -- time in seconds for crafting one item
+local AutoCraftingEnabled = false
+local AutoCraftTarget = "Candy Planter"
 local craftingCoroutine = nil
-local isCrafting = false
+local craftingQueue = {}
+local craftingTimePerItem = 300  -- 5 minutes in seconds
 
+-- Recipes {
 
--- Blender Functions }
+local recipes = {
+	-- Planters
+	["Hydroponic Planter"] = {
+		Honey = 750000000,
+		Turpentine = 1,
+		["Blue Extract"] = 750,
+		["Magic Bean"] = 75,
+		["Soft Wax"] = 500,
+		["Caustic Wax"] = 25
+	},
+	["Petal Planter"] = {
+		["Magic Bean"] = 100,
+		Glitter = 100,
+		["Soft Wax"] = 250,
+		["Swirled Wax"] = 50,
+		["Super Smoothie"] = 25
+	},
+	["Heat-Treated Planter"] = {
+		Honey = 750000000,
+		["Red Extract"] = 750,
+		["Magic Bean"] = 75,
+		["Hard Wax"] = 150,
+		["Swirled Wax"] = 25,
+		Turpentine = 1
+	},
+	["Red Clay Planter"] = {
+		Honey = 10000000,
+		["Magic Bean"] = 5,
+		["Red Extract"] = 15,
+		["Soft Wax"] = 20
+	},
+	["Blue Clay Planter"] = {
+		Honey = 10000000,
+		["Magic Bean"] = 5,
+		["Blue Extract"] = 15,
+		["Soft Wax"] = 20
+	},
+	["Candy Planter"] = {
+		Honey = 5000000,
+		["Magic Bean"] = 5,
+		Gumdrops = 30,
+		["Soft Wax"] = 5
+	},
+	["Tacky Planter"] = {
+		Honey = 50000000,
+		["Magic Bean"] = 10,
+		["Purple Potion"] = 1,
+		["Hard Wax"] = 5,
+		["Soft Wax"] = 20
+	},
+	["Pesticide Planter"] = {
+		Honey = 750000000,
+		["Magic Bean"] = 25,
+		Neonberry = 25,
+		Glue = 15,
+		["Caustic Wax"] = 3,
+		["Hard Wax"] = 10
+	},
+	["The Planter of Plenty"] = {
+		Honey = 100000000000000,
+		["Magic Bean"] = 500,
+		["Super Smoothie"] = 100,
+		["Swirled Wax"] = 100,
+		["Caustic Wax"] = 100,
+		Turpentine = 25
+	},
 
--- Function to update the queue display
-local function UpdateBlenderQueueDisplay()
-	for i = 1, maxDisplaySlots do
-		local label = _G["BlenderQueueSlot" .. i .. "Label"]
-		if label then  -- Check if the label exists
-			if BlenderQueue[i] then
-				local timeRemaining = BlenderQueue[i].TimeRemaining
-				local hours = math.floor(timeRemaining / 3600)
-				local minutes = math.floor((timeRemaining % 3600) / 60)
-				local seconds = timeRemaining % 60
-				label:Set(string.format("Slot %d: %s x%d | Time remaining: %02d:%02d:%02d", 
-					i, BlenderQueue[i].Recipe, BlenderQueue[i].Count, hours, minutes, seconds))
-			else
-				label:Set("Slot " .. i .. ": *empty*")
-			end
-		else
-			print("Label for Slot " .. i .. " is not initialized.")  -- Debug message for missing label
-		end
-	end
+	-- Gear
+	-- Boots
+	["Gummy Boots"] = {
+		Honey = 100000000,
+		Glue = 500,
+		Glitter = 250,
+		["Red Extract"] = 250,
+		["Blue Extract"] = 250,
+		["Satisfying Vial"] = 1,
+		["Motivating Vial"] = 1
+	},
+	["Coconut Clogs"] = {
+		Honey = 10000000000,
+		Coconut = 150,
+		["Tropical Drink"] = 50,
+		Glue = 100,
+		Oil = 100,
+		["Refreshing Vial"] = 1
+	},
+	-- Guards
+	["Cobalt Guard"] = {
+		Honey = 200000000,
+		Enzymes = 50,
+		Glitter = 25,
+		Stinger = 100,
+		["Blue Extract"] = 100
+	},
+	["Crimson Guard"] = {
+		Honey = 200000000,
+		Oil = 50,
+		Glitter = 25,
+		Stinger = 100,
+		["Red Extract"] = 100
+	},
+	-- Belts
+	["Honeycomb Belt"] = {
+		Honey = 75000000,
+		Enzymes = 50,
+		Glue = 50,
+		Oil = 25
+	},
+	["Petal Belt"] = {
+		Honey = 15000000000,
+		["Spirit Petal"] = 1,
+		["Star Jelly"] = 25,
+		Glitter = 50,
+		Glue = 100
+	},
+	["Coconut Belt"] = {
+		Honey = 7500000000000,
+		Coconut = 500,
+		["Tropical Drink"] = 1500,
+		["Purple Potion"] = 200,
+		["Hard Wax"] = 200,
+		Turpentine = 3,
+		["Refreshing Vial"] = 3
+	},
+	-- Bags
+	["Coconut Canister"] = {
+		["Tropical Drink"] = 150,
+		Coconut = 250,
+		["Red Extract"] = 150,
+		["Blue Extract"] = 150,
+		["Refreshing Vial"] = 2,
+		Honey = 25000000000
+	},
 
-	-- Update the current crafting slot display
-	if #BlenderQueue > 0 then
-		local currentOrder = BlenderQueue[1]
-		local timeRemaining = currentOrder.TimeRemaining
-		local hours = math.floor(timeRemaining / 3600)
-		local minutes = math.floor((timeRemaining % 3600) / 60)
-		local seconds = timeRemaining % 60
-		_G.BlenderQueueCurrentSlot:Set(string.format("Currently crafting: %s x%d | Time remaining: %02d:%02d:%02d", 
-			currentOrder.Recipe, currentOrder.Count, hours, minutes, seconds))
+	-- Masks
+	["Bubble Mask"] = {
+		Honey = 100000000,
+		Blueberry = 500,
+		Glitter = 15,
+		Oil = 25,
+		["Blue Extract"] = 50
+	},
+	["Demon Mask"] = {
+		Honey = 5000000000,
+		Enzymes = 150,
+		Glue = 100,
+		Stinger = 500,
+		["Invigorating Vial"] = 1,
+		["Red Extract"] = 250
+	},
+	["Diamond Mask"] = {
+		Honey = 5000000000,
+		Oil = 150,
+		Glitter = 100,
+		["Diamond Egg"] = 5,
+		["Comforting Vial"] = 1,
+		["Blue Extract"] = 250
+	},
+	["Gummy Mask"] = {
+		Honey = 5000000000,
+		Glue = 250,
+		Enzymes = 100,
+		Oil = 100,
+		Glitter = 100,
+		["Satisfying Vial"] = 1
+	},
+
+	-- Tools
+	["Tide Popper"] = {
+		Honey = 2500000000000,
+		["Blue Extract"] = 1500,
+		Stinger = 150,
+		["Tropical Drink"] = 150,
+		["Swirled Wax"] = 75,
+		["Super Smoothie"] = 50,
+		["Comforting Vial"] = 3
+	},
+	["Dark Scythe"] = {
+		["Red Extract"] = 1500,
+		Stinger = 150,
+		["Hard Wax"] = 100,
+		["Caustic Wax"] = 50,
+		["Super Smoothie"] = 50,
+		["Invigorating Vial"] = 3,
+		Honey = 2500000000000
+	},
+	["Gummyballer"] = {
+		Glue = 1500,
+		Gumdrops = 2000,
+		["Caustic Wax"] = 50,
+		["Super Smoothie"] = 50,
+		["Satisfying Vial"] = 3,
+		Turpentine = 5,
+		Honey = 10000000000000
+	},
+	["Petal Wand"] = {
+		["Spirit Petal"] = 1,
+		["Star Jelly"] = 10,
+		Glitter = 25,
+		Enzymes = 75,
+		Honey = 1500000000
+	}
+}
+
+-- Blender recipes
+local blender_recipes = {
+	["Blue Extract"] = {Blueberry = 50, ["Royal Jelly"] = 10},
+	["Red Extract"] = {Strawberry = 50, ["Royal Jelly"] = 10},
+	["Enzymes"] = {Pineapple = 50, ["Royal Jelly"] = 10},
+	["Oil"] = {["Sunflower Seed"] = 50, ["Royal Jelly"] = 10},
+	["Glue"] = {Gumdrops = 50, ["Royal Jelly"] = 10},
+	["Tropical Drink"] = {Coconut = 10, Enzymes = 2, Oil = 2},
+	["Gumdrops"] = {Pineapple = 3, Strawberry = 3, Blueberry = 3},
+	["Moon Charm"] = {["Royal Jelly"] = 1, Pineapple = 5, Gumdrops = 5},
+	["Glitter"] = {["Moon Charm"] = 25, ["Magic Bean"] = 1},
+	["Star Jelly"] = {["Royal Jelly"] = 100, Glitter = 3},
+	["Purple Potion"] = {Neonberry = 3, ["Red Extract"] = 3, ["Blue Extract"] = 3, Glue = 3},
+	["Soft Wax"] = {Honeysuckle = 5, Oil = 1, Enzymes = 1, ["Royal Jelly"] = 10},
+	["Hard Wax"] = {["Soft Wax"] = 3, Enzymes = 3, Bitterberry = 33, ["Royal Jelly"] = 33},
+	["Swirled Wax"] = {["Hard Wax"] = 3, ["Soft Wax"] = 9, ["Purple Potion"] = 6, ["Royal Jelly"] = 3333},
+	["Caustic Wax"] = {["Hard Wax"] = 5, Enzymes = 5, Neonberry = 25, ["Royal Jelly"] = 5252},
+	["Field Dice"] = {["Soft Wax"] = 1, Whirligig = 1, ["Red Extract"] = 1, ["Blue Extract"] = 1},
+	["Smooth Dice"] = {["Field Dice"] = 3, ["Soft Wax"] = 3, Whirligig = 3, Oil = 3},
+	["Loaded Dice"] = {["Smooth Dice"] = 3, ["Hard Wax"] = 3, Oil = 3, Glue = 1},
+	["Super Smoothie"] = {Neonberry = 3, ["Star Jelly"] = 3, ["Purple Potion"] = 3, ["Tropical Drink"] = 6},
+	["Turpentine"] = {["Super Smoothie"] = 10, ["Caustic Wax"] = 10, ["Star Jelly"] = 100, Honeysuckle = 1000}
+}
+
+local craftingStartTime = 0
+local craftingEndTime = 0
+
+-- Recipes }
+
+-- Helper function to format the time in DD:HH:MM:SS format
+local function formatTime(seconds)
+	local days = math.floor(seconds / 86400)  -- 86400 seconds in a day
+	seconds = seconds % 86400
+	local hours = math.floor(seconds / 3600)  -- 3600 seconds in an hour
+	seconds = seconds % 3600
+	local minutes = math.floor(seconds / 60)  -- 60 seconds in a minute
+	seconds = seconds % 60
+	return string.format("%02d:%02d:%02d:%02d", days, hours, minutes, seconds)
+end
+
+-- Function to calculate the remaining time for the current crafting operation
+local function getRemainingTime()
+	local currentTime = tick()
+	local remainingTime = math.max(0, craftingEndTime - currentTime)
+	return remainingTime
+end
+
+-- Function to update the GUI labels to reflect the current Blender queue status and time remaining
+local function updateBlenderQueueLabels()
+	-- Set the currently crafting label with time remaining
+	if #craftingQueue > 0 then
+		local currentCrafting = craftingQueue[1]
+		local remainingTime = getRemainingTime()
+		_G.BlenderQueueCurrentSlot:Set("Currently crafting: " .. currentCrafting.recipeName .. " x" .. currentCrafting.count .. " | Time left: " .. formatTime(remainingTime))
 	else
 		_G.BlenderQueueCurrentSlot:Set("Currently crafting: *empty*")
 	end
-end
 
--- Function to add an item to the queue
-local function AddToBlenderQueue(recipe, quantity)
-	-- Add the order to the queue
-	local craftTime = craftTimePerItem * quantity
-	table.insert(BlenderQueue, {Recipe = recipe, Count = quantity, TimeRemaining = craftTime})
-
-	-- Update the queue display
-	UpdateBlenderQueueDisplay()
-end
-
-
-local function ProcessBlenderQueue()
-	if AutoBlenderEnabled and #BlenderQueue > 0 then
-		if not isCrafting then
-			isCrafting = true
-			craftingCoroutine = coroutine.create(function()
-				while #BlenderQueue > 0 do  -- Continue processing while there are items in the queue
-					local currentOrder = table.remove(BlenderQueue, 1)
-					UpdateBlenderQueueDisplay()  -- Update the display before starting the next order
-
-					-- Display the currently crafting item
-					_G.BlenderQueueCurrentSlot:Set(string.format("Currently crafting: %s x%d", currentOrder.Recipe, currentOrder.Count))
-
-					-- Teleport to the Blender location
-					teleportTo(ToyLocations["Blender"])
-					wait(3)  -- Wait for teleportation to complete
-
-					-- Place the crafting order
-					game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("PlaceOrder", {
-						["Recipe"] = currentOrder.Recipe,
-						["Count"] = currentOrder.Count
-					})
-					wait(1)
-
-					-- Calculate total crafting time
-					local craftTime = craftTimePerItem * currentOrder.Count
-					local startTime = tick()  -- Get the current server time
-
-					-- Countdown timer for crafting
-					while true do
-						local elapsedTime = tick() - startTime
-						local timeRemaining = craftTime - elapsedTime
-
-						if timeRemaining <= 0 then
-							break  -- Stop if time is up
-						end
-
-						UpdateBlenderQueueDisplay()  -- Update display each second
-
-						-- Update the currently crafting display with the time remaining
-						_G.BlenderQueueCurrentSlot:Set(string.format("Currently crafting: %s x%d | Time remaining: %02d:%02d:%02d",
-							currentOrder.Recipe, currentOrder.Count, 
-							math.floor(timeRemaining / 3600),
-							math.floor((timeRemaining % 3600) / 60),
-							timeRemaining % 60))
-
-						wait(1)  -- Wait for 1 second before recalculating
-					end
-
-					-- After countdown, claim the crafted items
-					game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("StopOrder")
-					wait(3)  -- Wait for items to be claimed
-
-					-- Clear the currently crafting display
-					_G.BlenderQueueCurrentSlot:Set("Currently crafting: *empty*")
-
-					-- Wait before processing the next order
-					wait(5)  -- Adding a 5-second delay before the next operation
-				end
-
-				-- Reset crafting state after finishing the queue
-				isCrafting = false
-				craftingCoroutine = nil  -- Clear the coroutine reference
-			end)
-			coroutine.resume(craftingCoroutine)  -- Start the coroutine
+	-- Update the rest of the queue slots
+	for i = 1, 12 do
+		local queueLabel = _G["BlenderQueueSlot" .. i .. "Label"]
+		if craftingQueue[i] then
+			queueLabel:Set("Slot " .. i .. ": " .. craftingQueue[i].recipeName .. " x" .. craftingQueue[i].count)
+		else
+			queueLabel:Set("Slot " .. i .. ": *empty*")
 		end
 	end
 end
 
+-- Function to check if all required materials are available for a recipe
+local function checkMaterialsAvailable(recipeName, inventory)
+	print("[BlenderDebug] Checking materials for recipe: " .. recipeName)
 
+	local recipe = recipes[recipeName] or blender_recipes[recipeName]
 
+	if not recipe then
+		warn("[BlenderDebug] Recipe not found for: " .. recipeName)
+		return false
+	end
 
+	for materialName, requiredAmount in pairs(recipe) do
+		local availableAmount = inventory[materialName] or 0
+		print("[BlenderDebug] Material: " .. materialName .. ", Required: " .. requiredAmount .. ", Available: " .. availableAmount)
 
-
--- Blender Tab }
-
-local BlenderTab = Window:CreateTab("Blender", 4483362458) -- Title, Image b
-local BlenderQueueNoticeLabel = BlenderTab:CreateLabel("🚨 MAKE SURE THE BLENDER IS EMPTY BEFORE ACTIVATING AUTO BLENDER")
-
-local AutoBlenderToggle = BlenderTab:CreateToggle({
-	Name = "Auto Blender",
-	CurrentValue = false,
-	Flag = "AutoBlenderToggle", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-	Callback = function(Value)
-		AutoBlenderEnabled = Value
-		if AutoBlenderEnabled then
-			ProcessBlenderQueue()  -- Start processing the queue when enabled
+		if availableAmount < requiredAmount then
+			print("[BlenderDebug] Insufficient " .. materialName .. " for " .. recipeName .. ". Needed: " .. requiredAmount .. ", Available: " .. availableAmount)
+			return false
 		end
-	end,
-})
+	end
 
-local BlenderSettingsSection = BlenderTab:CreateSection("Blender Queue Settings")
-local BlenderQueueItemSelectDropdown = BlenderTab:CreateDropdown({
-	Name = "Blender Recipe Selection",
-	Options = { 
-		"Red Extract", 
-		"Blue Extract", 
-		"Enzymes", 
-		"Oil", 
-		"Glue", 
-		"Tropical Drink", 
-		"Gumdrops", 
-		"Moon Charm", 
-		"Glitter", 
-		"Star Jelly", 
-		"Purple Potion", 
-		"Soft Wax", 
-		"Hard Wax", 
-		"Swirled Wax", 
-		"Caustic Wax", 
-		"Field Dice", 
-		"Smooth Dice", 
-		"Loaded Dice", 
-		"Super Smoothie", 
-		"Turpentine" 
-	},
-	CurrentOption = {"Red Extract"},
-	MultipleOptions = false,
-	Flag = "BlenderRecipe4Queue", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-	Callback = function(Option)
-		formattedBlenderID = string.gsub(Option[1], "%s", "")
-	end,
-})
+	print("[BlenderDebug] All required materials are available for: " .. recipeName)
+	return true
+end
 
-local BlenderQueueQuantityInput = BlenderTab:CreateInput({
-	Name = "Quantity Requested",
-	PlaceholderText = "Input amount...",
-	RemoveTextAfterFocusLost = false,
-	Callback = function(Text)
-		-- The function that takes place when the input is changed
-		-- The variable (Text) is a string for the value in the text box
-		
-		-- Validate the input as a number
-		local quantity = tonumber(Text)
-		if quantity and quantity > 0 then
-			QuantityRequested = quantity
-			Rayfield:Notify({
-				Title = "Blender Queue Notice",
-				Content = "Valid quantity accepted.",
-				Duration = 1.5,
-				Image = 4483362458,
-				Actions = {},
+-- Function to queue crafting order with partial crafting logic
+local function queueCraftingOrder(recipeName, count)
+	print("[BlenderDebug] Initiating crafting process for: " .. recipeName .. " with quantity: " .. count)
+
+	-- Teleport to the Blender
+	print("[BlenderDebug] Teleporting to the Blender...")
+	teleportTo(ToyLocations["Blender"])
+	wait(3)
+
+	-- Stop any current Blender orders
+	print("[BlenderDebug] Stopping any ongoing blender orders.")
+	game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("StopOrder")
+	wait(1)
+
+	-- Retrieve the recipe data (with spaces intact for table lookup)
+	local recipe = recipes[recipeName] or blender_recipes[recipeName]
+	if not recipe then
+		warn("[BlenderDebug] Recipe not found for: " .. recipeName)
+		return false
+	end
+
+	-- Fetch inventory and calculate maximum craftable count
+	local currentInventory = getInventory()
+	print("[BlenderDebug] Current Inventory: ", currentInventory)
+
+	local maxCraftableCount = count
+
+	print("[BlenderDebug] Calculating maximum craftable count based on current inventory...")
+	for materialName, requiredAmount in pairs(recipe) do
+		local availableAmount = currentInventory[materialName] or 0
+		local craftableWithThisMaterial = math.floor(availableAmount / requiredAmount)
+		maxCraftableCount = math.min(maxCraftableCount, craftableWithThisMaterial)
+		print("[BlenderDebug] Material: " .. materialName .. ", Craftable Count: " .. craftableWithThisMaterial)
+	end
+
+	print("[BlenderDebug] Maximum craftable count for " .. recipeName .. ": " .. maxCraftableCount)
+
+	if maxCraftableCount > 0 then
+		-- Convert the recipe name (remove spaces) only when sending the command to BlenderCommand
+		local blenderRecipeName = recipeName:gsub("%s+", "")
+		print("[BlenderDebug] Modified recipe name for Blender command: " .. blenderRecipeName)
+
+		-- Place the crafting order
+		local success, response = pcall(function()
+			return game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("PlaceOrder", {
+				Recipe = blenderRecipeName,
+				Count = maxCraftableCount
 			})
+		end)
+
+		if success then
+			print("[BlenderDebug] Successfully queued crafting of " .. maxCraftableCount .. " " .. recipeName)
+			count = count - maxCraftableCount
+
+			-- Reinsert remaining items into the crafting queue if there are more to craft
+			if count > 0 then
+				table.insert(craftingQueue, { recipeName = recipeName, count = count })
+				print("[BlenderDebug] Re-inserting remaining " .. count .. " of " .. recipeName .. " into the crafting queue.")
+			end
 		else
-			Rayfield:Notify({
-				Title = "Blender Queue Notice",
-				Content = "Invalid quantity. Please enter a number greater than 0.",
-				Duration = 1.5,
-				Image = 4483362458,
-				Actions = {},
-			})
+			warn("[BlenderDebug] Failed to queue crafting for " .. recipeName .. ". Error: " .. tostring(response))
+		end
+	else
+		print("[BlenderDebug] Not enough materials to craft any of " .. recipeName .. ". Skipping...")
+	end
+end
+
+-- Coroutine to process crafting queue with inventory refresh and proper delay
+local function processCraftingQueueCoroutine()
+	print("[BlenderDebug] Starting the crafting queue processor...")
+
+	while AutoCraftingEnabled do
+		if #craftingQueue > 0 then
+			-- Set the currently crafting label BEFORE starting the craft
+			local nextOrder = craftingQueue[1]  -- Don't remove it yet!
+			local recipeName = nextOrder.recipeName
+			local count = nextOrder.count
+
+			print("[BlenderDebug] Current crafting order: " .. recipeName .. ", Count: " .. count)
+
+			-- Update the currently crafting label with time remaining
+			local remainingTime = getRemainingTime()
+			_G.BlenderQueueCurrentSlot:Set("Currently crafting: " .. recipeName .. " x" .. count .. " | Time left: " .. formatTime(remainingTime))
+
+			-- Refresh inventory before crafting
+			local currentInventory = getInventory()
+			local maxCraftableCount = count
+
+			-- Check recipe and calculate craftable items
+			local recipe = recipes[recipeName] or blender_recipes[recipeName]
+			if recipe then
+				print("[BlenderDebug] Calculating craftable count for " .. recipeName)
+				for materialName, requiredAmount in pairs(recipe) do
+					local availableAmount = currentInventory[materialName] or 0
+					local craftableWithThisMaterial = math.floor(availableAmount / requiredAmount)
+					maxCraftableCount = math.min(maxCraftableCount, craftableWithThisMaterial)
+					print("[BlenderDebug] Material: " .. materialName .. ", Craftable Count: " .. craftableWithThisMaterial)
+				end
+
+				if maxCraftableCount > 0 then
+					print("[BlenderDebug] Queueing crafting order for: " .. recipeName .. " with count: " .. maxCraftableCount)
+
+					-- Attempt to queue crafting operation
+					local success, response = pcall(function()
+						return queueCraftingOrder(recipeName, maxCraftableCount)
+					end)
+
+					if success then
+						print("[BlenderDebug] Successfully queued " .. maxCraftableCount .. " of " .. recipeName)
+						count = count - maxCraftableCount
+
+						-- Calculate crafting time based on number of items
+						craftingStartTime = tick()
+						craftingEndTime = craftingStartTime + (craftingTimePerItem * maxCraftableCount)
+						print("[BlenderDebug] Waiting for crafting to finish. Time required: " .. (craftingEndTime - craftingStartTime) .. " seconds")
+
+						-- Continuously update the remaining time on the GUI
+						while tick() < craftingEndTime do
+							updateBlenderQueueLabels()
+							wait(1)
+						end
+
+						-- Retrieve the crafted item from the Blender
+						print("[BlenderDebug] Retrieving crafted item from the Blender.")
+						game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("StopOrder")
+
+						-- Now, remove the item from the queue since it's finished
+						table.remove(craftingQueue, 1)
+						print("[BlenderDebug] Removed item from crafting queue: " .. recipeName)
+
+						-- Reinsert remaining items into the queue if there are more to craft
+						if count > 0 then
+							table.insert(craftingQueue, { recipeName = recipeName, count = count })
+							print("[BlenderDebug] Re-inserting remaining " .. count .. " of " .. recipeName .. " into the crafting queue.")
+						end
+					else
+						warn("[BlenderDebug] Failed to queue crafting for " .. recipeName .. ". Error: " .. tostring(response))
+					end
+				else
+					print("[BlenderDebug] Not enough materials to craft even one of " .. recipeName .. ". Skipping...")
+				end
+			else
+				warn("[BlenderDebug] Recipe not found for " .. recipeName)
+			end
+		else
+			wait(1) -- Wait before checking the queue again
+		end
+	end
+
+	print("[BlenderDebug] Crafting queue processor stopped.")
+end
+
+
+
+
+
+-- Function to start the coroutine
+local function startQueueProcessingCoroutine()
+	print("[BlenderDebug] Starting the crafting coroutine...")
+	craftingCoroutine = coroutine.create(processCraftingQueueCoroutine)
+	coroutine.resume(craftingCoroutine)
+end
+
+-- Add a call to update the GUI after adding or removing from the queue
+local function addToCraftingQueue(recipeName, count)
+	print("[BlenderDebug] Adding " .. count .. " of " .. recipeName .. " to the crafting queue.")
+	if count > 0 then
+		table.insert(craftingQueue, { recipeName = recipeName, count = count })
+		updateBlenderQueueLabels()  -- Update GUI labels after adding
+	else
+		print("[BlenderDebug] No need to add " .. recipeName .. " to the queue, sufficient inventory.")
+	end
+end
+
+-- Function to calculate missing items
+local function calculateMissingItems(goalItem, inventory)
+	local missingItems = {}
+
+	-- Helper function for calculating missing amounts for Blender items
+	local function calculateForBlenderRecipe(itemName, requiredAmount)
+		print("[BlenderDebug] Calculating missing items for " .. itemName .. " with required amount: " .. requiredAmount)
+
+		local recipe = blender_recipes[itemName]
+
+		if recipe then
+			for subItem, subAmount in pairs(recipe) do
+				local totalSubAmount = subAmount * requiredAmount
+				print("[BlenderDebug] Sub-item: " .. subItem .. " | Total required: " .. totalSubAmount)
+				calculateForBlenderRecipe(subItem, totalSubAmount)
+			end
+		else
+			local availableAmount = inventory[itemName] or 0
+			local missingAmount = math.max(0, requiredAmount - availableAmount)
+			print("[BlenderDebug] Available: " .. availableAmount .. ", Missing: " .. missingAmount .. " of " .. itemName)
+
+			if missingAmount > 0 then
+				missingItems[itemName] = (missingItems[itemName] or 0) + missingAmount
+			end
+		end
+	end
+
+	print("[BlenderDebug] Calculating missing items for goal: " .. goalItem)
+	local goalRecipe = blender_recipes[goalItem]
+
+	if goalRecipe then
+		for itemName, requiredAmount in pairs(goalRecipe) do
+			print("[BlenderDebug] Calculating missing items for ingredient: " .. itemName)
+			calculateForBlenderRecipe(itemName, requiredAmount)
+		end
+	else
+		print("[BlenderDebug] No Blender recipe found for goal item: " .. goalItem)
+	end
+
+	return missingItems
+end
+
+
+-- Function to start auto-crafting for the target item (goal item)
+local function startAutoCrafting(targetItem)
+	local currentInventory = getInventory()
+	print("[BlenderDebug] Starting auto-crafting for target: " .. targetItem)
+
+	if currentInventory then
+		print("[BlenderDebug] Inventory data fetched successfully.")
+
+		-- Get the recipe for the goal item (from recipes table)
+		local goalRecipe = recipes[targetItem]
+		if goalRecipe then
+			print("[BlenderDebug] Found goal recipe for: " .. targetItem)
+
+			-- Loop through each ingredient required for the goal item
+			for ingredient, requiredAmount in pairs(goalRecipe) do
+				print("[BlenderDebug] Checking ingredient: " .. ingredient .. " for " .. targetItem)
+
+				-- Check if the ingredient can be crafted in the Blender
+				if blender_recipes[ingredient] then
+					print("[BlenderDebug] Ingredient " .. ingredient .. " can be crafted in Blender.")
+
+					-- Get the current amount of the ingredient in the inventory
+					local currentAmount = currentInventory[ingredient] or 0
+					print("[BlenderDebug] Current amount of " .. ingredient .. ": " .. currentAmount)
+
+					-- Calculate how much is still needed (only queue the missing amount)
+					local missingAmount = math.max(0, requiredAmount - currentAmount)
+					print("[BlenderDebug] Missing amount of " .. ingredient .. ": " .. missingAmount)
+
+					if missingAmount > 0 then
+						addToCraftingQueue(ingredient, missingAmount)
+						print("[BlenderDebug] Queued " .. missingAmount .. " of " .. ingredient .. " for crafting.")
+					else
+						print("[BlenderDebug] No need to craft more " .. ingredient .. ", sufficient inventory.")
+					end
+				else
+					print("[BlenderDebug] Ingredient " .. ingredient .. " is not a Blender recipe.")
+				end
+			end
+		else
+			warn("[BlenderDebug] No recipe found for goal item: " .. targetItem)
+		end
+
+		-- Start processing the crafting queue if there are items to craft
+		if #craftingQueue > 0 then
+			print("[BlenderDebug] Starting crafting queue processing...")
+			startQueueProcessingCoroutine()
+		else
+			print("[BlenderDebug] Crafting queue is empty; nothing to craft.")
+		end
+	else
+		warn("[BlenderDebug] Error: Unable to retrieve inventory data.")
+	end
+end
+
+
+-- Function to stop auto-crafting
+local function stopAutoCrafting()
+	print("[BlenderDebug] Auto-Crafting Stopped.")
+	AutoCraftingEnabled = false
+	craftingQueue = {}
+	updateBlenderQueueLabels()
+	game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("StopOrder")
+	if craftingCoroutine and coroutine.status(craftingCoroutine) ~= "dead" then
+		coroutine.close(craftingCoroutine)
+		print("[BlenderDebug] Auto-Crafting Coroutine has been stopped.")
+	end
+end
+
+-- Blender Functions }
+
+-- Blender Tab {
+local BlenderTab = Window:CreateTab("Blender", 4483362458) -- Title, Image b
+local BlenderSection = BlenderTab:CreateSection("Auto-Craft Item")
+
+local AutoCraftToggle = BlenderTab:CreateToggle({
+	Name = "Enable auto-crafting",
+	CurrentValue = false,
+	Flag = "AutoCraftToggle",
+	Callback = function(Value)
+		AutoCraftingEnabled = Value  -- Enable or disable auto-crafting
+
+		if AutoCraftingEnabled then
+			-- Start auto-crafting if enabled
+			print("Auto-Crafting Enabled for: " .. AutoCraftTarget)
+			startAutoCrafting(AutoCraftTarget)  -- Call the crafting function
+		else
+			-- Stop auto-crafting if disabled
+			print("Auto-Crafting Disabled.")
+			stopAutoCrafting()  -- Optionally define a stop function
 		end
 	end,
 })
 
-local BlenderQueueSubmitButton = BlenderTab:CreateButton({
-	Name = "Submit to Blender Queue",
-	Callback = function()
-		-- The function that takes place when the button is pressed
-
-		AddToBlenderQueue(formattedBlenderID, QuantityRequested)
+local AutoCraftDropdown = BlenderTab:CreateDropdown({
+	Name = "Auto-Crafting Item Selection",
+	Options = {
+		"Candy Planter", "Red Clay Planter", "Blue Clay Planter", "Tacky Planter",
+		"Pesticide Planter", "Hydroponic Planter", "Heat-Treated Planter", "Petal Planter", 
+		"The Planter of Plenty", "Coconut Clogs", "Gummy Boots", "Cobalt Guard", 
+		"Crimson Guard", "Honeycomb Belt", "Petal Belt", "Coconut Belt", "Coconut Canister", 
+		"Bubble Mask", "Demon Mask", "Diamond Mask", "Gummy Mask", "Petal Wand", 
+		"Tide Popper", "Dark Scythe", "Gummyballer"
+	},
+	CurrentOption = {"Candy Planter"},
+	MultipleOptions = false,
+	Flag = "AutoCraftDropdown",
+	Callback = function(Option)
+		AutoCraftTarget = Option[1]  -- Set the new crafting target
+		print("Selected Auto-Craft Target: " .. AutoCraftTarget)
 	end,
 })
-
-local BlenderQueueClearButton = BlenderTab:CreateButton({
-	Name = "Clear Blender Queue",
-	Callback = function()
-		-- Clear the queue and stop any ongoing crafting
-		BlenderQueue = {}
-		isCrafting = false  -- Stop the crafting process
-		if craftingCoroutine then
-			coroutine.close(craftingCoroutine)  -- Stop the coroutine if it's running
-			craftingCoroutine = nil
-		end
-		teleportTo(ToyLocations["Blender"])
-		wait(3)
-		game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("StopOrder")
-		UpdateBlenderQueueDisplay()
-		_G.BlenderQueueCurrentSlot:Set("Currently crafting: *empty*")  -- Clear the current crafting display
-	end,
-})
-
 
 local BlenderQueueSection = BlenderTab:CreateSection("Blender Queue")
 _G.BlenderQueueCurrentSlot = BlenderTab:CreateLabel("Currently crafting: *empty*")
@@ -657,3 +1054,10 @@ _G.BlenderQueueSlot9Label = BlenderTab:CreateLabel("Slot 9: *empty*")
 _G.BlenderQueueSlot10Label = BlenderTab:CreateLabel("Slot 10: *empty*")
 _G.BlenderQueueSlot11Label = BlenderTab:CreateLabel("Slot 11: *empty*")
 _G.BlenderQueueSlot12Label = BlenderTab:CreateLabel("Slot 12: *empty*")
+
+-- Blender Tab }
+
+
+
+-- Rayfield load config line
+Rayfield:LoadConfiguration()
