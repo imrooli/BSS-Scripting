@@ -8,7 +8,7 @@ local selectedExportFormat = nil
 local discordWebhook = "https://discord.com/api/webhooks/1294264217892950057/bhdRQJSiYOmWeUknFMIrlPjFVJ8lo5JBpYckOEbzrH8Ft6GCxrsR9_YBi3WoJVbpZefq"
 local HttpService = game:GetService("HttpService")
 local request = request or http_request or httprequest or http
-
+local lastKnownInventory = {}
 
 -- Blender Definitions {
 local AutoCraftingEnabled = false
@@ -263,7 +263,16 @@ end
 
 local function getInventory()
 	local inventoryItems = getInventoryVars()
-	if not inventoryItems then return end
+	if not inventoryItems then 
+		-- Check if we have a valid last known inventory
+		if next(lastKnownInventory) then
+			warn("Warning: Failed to retrieve current inventory. Using last known inventory.")
+			return lastKnownInventory
+		else
+			warn("Error: No inventory data available.")
+			return nil
+		end
+	end
 
 	local inventoryData = {}
 
@@ -289,9 +298,20 @@ local function getInventory()
 	-- Check if Honey is the only thing in the inventory
 	if next(inventoryData) == "Honey" and table.getn(inventoryData) == 1 then
 		warn("Warning: Only Honey found in inventory. Returning nil.")
-		AutoCraftToggle:Set(false)
-		return nil
+
+		-- Check if we have a valid last known inventory
+		if next(lastKnownInventory) then
+			warn("Using last known inventory as a fallback.")
+			return lastKnownInventory
+		else
+			warn("Error: No valid inventory data available.")
+			AutoCraftToggle:Set(false)
+			return nil
+		end
 	end
+
+	-- Update the last known inventory with valid data
+	lastKnownInventory = inventoryData
 
 	-- Debug prints to verify inventory data
 	print("Debug: Inventory Data")
@@ -656,6 +676,12 @@ local craftingEndTime = 0
 
 -- Recipes }
 
+local function emptyBlender()
+	teleportTo(ToyLocations["Blender"])
+	wait(2.6)
+	game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("StopOrder")
+end
+
 -- Helper function to format the time in DD:HH:MM:SS format
 local function formatTime(seconds)
 	local days = math.floor(seconds / 86400)  -- 86400 seconds in a day
@@ -732,8 +758,7 @@ local function queueCraftingOrder(recipeName, count)
 
 	-- Stop any current Blender orders
 	print("[BlenderDebug] Stopping any ongoing blender orders.")
-	game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("StopOrder")
-	wait(1)
+	emptyBlender()
 
 	-- Retrieve the recipe data (with spaces intact for table lookup)
 	local recipe = recipes[recipeName] or blender_recipes[recipeName]
@@ -845,7 +870,7 @@ local function processCraftingQueueCoroutine()
 
 						-- Retrieve the crafted item from the Blender
 						print("[BlenderDebug] Retrieving crafted item from the Blender.")
-						game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("StopOrder")
+						emptyBlender()
 
 						-- Now, remove the item from the queue since it's finished
 						table.remove(craftingQueue, 1)
@@ -1000,7 +1025,7 @@ local function stopAutoCrafting()
 	AutoCraftingEnabled = false
 	craftingQueue = {}
 	updateBlenderQueueLabels()
-	game:GetService("ReplicatedStorage").Events.BlenderCommand:InvokeServer("StopOrder")
+	emptyBlender()
 	if craftingCoroutine and coroutine.status(craftingCoroutine) ~= "dead" then
 		coroutine.close(craftingCoroutine)
 		print("[BlenderDebug] Auto-Crafting Coroutine has been stopped.")
