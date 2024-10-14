@@ -10,6 +10,15 @@ local HttpService = game:GetService("HttpService")
 local request = request or http_request or httprequest or http
 
 
+-- Blender Definitions {
+local AutoCraftingEnabled = false
+local AutoCraftTarget = "Candy Planter"
+local craftingCoroutine = nil
+local craftingQueue = {}
+local craftingTimePerItem = 300  -- 5 minutes in seconds
+
+-- Blender Definitions }
+
 -- Random tables idk
 
 local shopLocations = {
@@ -277,6 +286,13 @@ local function getInventory()
 		warn("Warning: Unable to find Honey value in CoreStats.")
 	end
 
+	-- Check if Honey is the only thing in the inventory
+	if next(inventoryData) == "Honey" and table.getn(inventoryData) == 1 then
+		warn("Warning: Only Honey found in inventory. Returning nil.")
+		AutoCraftToggle:Set(false)
+		return nil
+	end
+
 	-- Debug prints to verify inventory data
 	print("Debug: Inventory Data")
 	for k, v in pairs(inventoryData) do
@@ -292,6 +308,7 @@ local function getInventory()
 
 	return inventoryData
 end
+
 
 local function sendToWebhook(discordWebhook, inventoryData, selectedExportFormat)
 	local maxLength = 2000
@@ -403,12 +420,6 @@ local ExportInventoryButton = InventoryExportTab:CreateButton({
 
 
 -- Blender Functions {
-
-local AutoCraftingEnabled = false
-local AutoCraftTarget = "Candy Planter"
-local craftingCoroutine = nil
-local craftingQueue = {}
-local craftingTimePerItem = 300  -- 5 minutes in seconds
 
 -- Recipes {
 
