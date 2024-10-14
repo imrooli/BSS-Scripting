@@ -1067,21 +1067,22 @@ end
 
 -- Function to stop auto-crafting
 local function stopAutoCrafting()
-	print("[BlenderDebug] Auto-Crafting Stopped.")
-	AutoCraftingEnabled = false
-	craftingQueue = {}
-	updateBlenderQueueLabels()
-	emptyBlender()
-	if craftingCoroutine and coroutine.status(craftingCoroutine) ~= "dead" then
-		coroutine.close(craftingCoroutine)
-		print("[BlenderDebug] Auto-Crafting Coroutine has been stopped.")
-	end
+    print("[BlenderDebug] Auto-Crafting Stopped.")
+    AutoCraftingEnabled = false
+    craftingQueue = {}
+    updateBlenderQueueLabels()
+    emptyBlender()
+    if craftingCoroutine and coroutine.status(craftingCoroutine) ~= "dead" then
+        coroutine.close(craftingCoroutine)
+        print("[BlenderDebug] Auto-Crafting Coroutine has been stopped.")
+    end
 end
 
 -- Blender Functions }
 
 -- Blender Tab {
 local BlenderTab = Window:CreateTab("Blender", 4483362458) -- Title, Image b
+local BlenderWarningLabel = BlenderTab:CreateLabel("🚨 MAKE SURE INVENTORY WINDOW IS OPEN BEFORE USING")
 local BlenderSection = BlenderTab:CreateSection("Auto-Craft Item")
 
 local AutoCraftToggle = BlenderTab:CreateToggle({
