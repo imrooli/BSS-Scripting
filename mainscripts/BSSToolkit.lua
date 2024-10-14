@@ -214,45 +214,45 @@ local InventoryExportSection = InventoryExportTab:CreateSection("Inventory Expor
 
 -- Function to save inventory data to a file
 local function saveInventoryData(inventoryData)
-    -- Ensure the folder exists
-    if not isfolder(folderName) then
-        makefolder(folderName)
-    end
+	-- Ensure the folder exists
+	if not isfolder(folderName) then
+		makefolder(folderName)
+	end
 
-    -- Encode inventory data to JSON
-    local jsonData = HttpService:JSONEncode(inventoryData)
-    if jsonData then
-        writefile(folderName .. "/" .. fileName, jsonData)
-        print("Debug: Successfully saved inventory data to file.")
-    else
-        warn("Error: Failed to encode inventory data to JSON.")
-    end
+	-- Encode inventory data to JSON
+	local jsonData = HttpService:JSONEncode(inventoryData)
+	if jsonData then
+		writefile(folderName .. "/" .. fileName, jsonData)
+		print("Debug: Successfully saved inventory data to file.")
+	else
+		warn("Error: Failed to encode inventory data to JSON.")
+	end
 end
 
 -- Function to read inventory data from a file
 local function readInventoryData()
-    -- Check if the file exists
-    if isfile(folderName .. "/" .. fileName) then
-        local jsonData = readfile(folderName .. "/" .. fileName)
-        if jsonData and jsonData ~= "" then
-            local success, inventoryData = pcall(function()
-                return HttpService:JSONDecode(jsonData)
-            end)
-            if success and type(inventoryData) == "table" then
-                print("Debug: Successfully read inventory data from file.")
-                return inventoryData
-            else
-                warn("Error: Failed to decode JSON data from inventory file.")
-                return nil
-            end
-        else
-            warn("Warning: Inventory data file is empty.")
-            return nil
-        end
-    else
-        warn("Warning: Inventory data file not found.")
-        return nil
-    end
+	-- Check if the file exists
+	if isfile(folderName .. "/" .. fileName) then
+		local jsonData = readfile(folderName .. "/" .. fileName)
+		if jsonData and jsonData ~= "" then
+			local success, inventoryData = pcall(function()
+				return HttpService:JSONDecode(jsonData)
+			end)
+			if success and type(inventoryData) == "table" then
+				print("Debug: Successfully read inventory data from file.")
+				return inventoryData
+			else
+				warn("Error: Failed to decode JSON data from inventory file.")
+				return nil
+			end
+		else
+			warn("Warning: Inventory data file is empty.")
+			return nil
+		end
+	else
+		warn("Warning: Inventory data file not found.")
+		return nil
+	end
 end
 
 local function getInventoryVars()
@@ -310,69 +310,69 @@ end
 
 -- Modified getInventory function
 local function getInventory()
-    local inventoryItems = getInventoryVars()
-    if not inventoryItems then 
-        warn("Warning: Unable to retrieve inventory variables.")
-        return nil 
-    end
+	local inventoryItems = getInventoryVars()
+	if not inventoryItems then 
+		warn("Warning: Unable to retrieve inventory variables.")
+		return nil 
+	end
 
-    local inventoryData = {}
+	local inventoryData = {}
 
-    for _, eggRow in pairs(inventoryItems) do
-        local typeName = eggRow:FindFirstChild("TypeName")
-        local eggSlot = eggRow:FindFirstChild("EggSlot")
+	for _, eggRow in pairs(inventoryItems) do
+		local typeName = eggRow:FindFirstChild("TypeName")
+		local eggSlot = eggRow:FindFirstChild("EggSlot")
 
-        if typeName and eggSlot then
-            local itemName = typeName.Text
-            local itemQuantity = parseQuantity(eggSlot.Count.Text)
-            inventoryData[itemName] = itemQuantity
-        else
-            warn("Warning: Missing TypeName or EggSlot in eggRow.")
-        end
-    end
+		if typeName and eggSlot then
+			local itemName = typeName.Text
+			local itemQuantity = parseQuantity(eggSlot.Count.Text)
+			inventoryData[itemName] = itemQuantity
+		else
+			warn("Warning: Missing TypeName or EggSlot in eggRow.")
+		end
+	end
 
-    if player.CoreStats and player.CoreStats.Honey then
-        inventoryData["Honey"] = player.CoreStats.Honey.Value
-    else
-        warn("Warning: Unable to find Honey value in CoreStats.")
-    end
+	if player.CoreStats and player.CoreStats.Honey then
+		inventoryData["Honey"] = player.CoreStats.Honey.Value
+	else
+		warn("Warning: Unable to find Honey value in CoreStats.")
+	end
 
-    -- Check if Honey is the only thing in the inventory
-    if next(inventoryData) == "Honey" and table.getn(inventoryData) == 1 then
-        warn("Warning: Only Honey found in inventory. Attempting to load saved inventory from file.")
-        
-        -- Attempt to read from the saved file
-        local savedInventory = readInventoryData()
-        if savedInventory then
-            print("Info: Loaded saved inventory data from file.")
-            -- Optionally, you might want to re-enable AutoCraftToggle or handle it based on saved data
-            AutoCraftToggle:Set(true)  -- Assuming you want to re-enable it
-            return savedInventory
-        else
-            warn("Error: Failed to load saved inventory data from file.")
-            AutoCraftToggle:Set(false)
-            return nil
-        end
-    end
+	-- Check if Honey is the only thing in the inventory
+	if next(inventoryData) == "Honey" and #inventoryData == 1 then
+		warn("Warning: Only Honey found in inventory. Attempting to load saved inventory from file.")
 
-    -- Debug prints to verify inventory data
-    print("Debug: Inventory Data")
-    for k, v in pairs(inventoryData) do
-        print(k, v)
-    end
+		-- Attempt to read from the saved file
+		local savedInventory = readInventoryData()
+		if savedInventory then
+			print("Info: Loaded saved inventory data from file.")
+			-- Optionally, you might want to re-enable AutoCraftToggle or handle it based on saved data
+			AutoCraftToggle:Set(true)  -- Assuming you want to re-enable it
+			return savedInventory
+		else
+			warn("Error: Failed to load saved inventory data from file.")
+			AutoCraftToggle:Set(false)
+			return nil
+		end
+	end
 
-    -- Save the inventory data to a file
-    saveInventoryData(inventoryData)
+	-- Debug prints to verify inventory data
+	print("Debug: Inventory Data")
+	for k, v in pairs(inventoryData) do
+		print(k, v)
+	end
 
-    -- Encode to JSON for potential other uses
-    local jsonData = HttpService:JSONEncode(inventoryData)
-    if jsonData then
-        print("Debug: Successfully encoded inventory data to JSON.")
-    else
-        warn("Error: Failed to encode inventory data to JSON.")
-    end
+	-- Save the inventory data to a file
+	saveInventoryData(inventoryData)
 
-    return inventoryData
+	-- Encode to JSON for potential other uses
+	local jsonData = HttpService:JSONEncode(inventoryData)
+	if jsonData then
+		print("Debug: Successfully encoded inventory data to JSON.")
+	else
+		warn("Error: Failed to encode inventory data to JSON.")
+	end
+
+	return inventoryData
 end
 
 
