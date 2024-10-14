@@ -17,6 +17,10 @@ local craftingCoroutine = nil
 local craftingQueue = {}
 local craftingTimePerItem = 300  -- 5 minutes in seconds
 
+-- Define folder and file names
+local folderName = "BSSToolkit"
+local fileName = "inventoryData.json"
+
 -- Blender Definitions }
 
 -- Random tables idk
@@ -208,6 +212,49 @@ local InventoryExportSection = InventoryExportTab:CreateSection("Inventory Expor
 
 -- Inventory Export Scripts
 
+-- Function to save inventory data to a file
+local function saveInventoryData(inventoryData)
+    -- Ensure the folder exists
+    if not isfolder(folderName) then
+        makefolder(folderName)
+    end
+
+    -- Encode inventory data to JSON
+    local jsonData = HttpService:JSONEncode(inventoryData)
+    if jsonData then
+        writefile(folderName .. "/" .. fileName, jsonData)
+        print("Debug: Successfully saved inventory data to file.")
+    else
+        warn("Error: Failed to encode inventory data to JSON.")
+    end
+end
+
+-- Function to read inventory data from a file
+local function readInventoryData()
+    -- Check if the file exists
+    if isfile(folderName .. "/" .. fileName) then
+        local jsonData = readfile(folderName .. "/" .. fileName)
+        if jsonData and jsonData ~= "" then
+            local success, inventoryData = pcall(function()
+                return HttpService:JSONDecode(jsonData)
+            end)
+            if success and type(inventoryData) == "table" then
+                print("Debug: Successfully read inventory data from file.")
+                return inventoryData
+            else
+                warn("Error: Failed to decode JSON data from inventory file.")
+                return nil
+            end
+        else
+            warn("Warning: Inventory data file is empty.")
+            return nil
+        end
+    else
+        warn("Warning: Inventory data file not found.")
+        return nil
+    end
+end
+
 local function getInventoryVars()
 	local gui = player.PlayerGui:FindFirstChild("ScreenGui")
 
@@ -261,72 +308,71 @@ local function truncateContent(content, maxLength)
 	return result
 end
 
+-- Modified getInventory function
 local function getInventory()
-	local inventoryItems = getInventoryVars()
-	if not inventoryItems then 
-		-- Check if we have a valid last known inventory
-		if next(lastKnownInventory) then
-			warn("Warning: Failed to retrieve current inventory. Using last known inventory.")
-			return lastKnownInventory
-		else
-			warn("Error: No inventory data available.")
-			return nil
-		end
-	end
+    local inventoryItems = getInventoryVars()
+    if not inventoryItems then 
+        warn("Warning: Unable to retrieve inventory variables.")
+        return nil 
+    end
 
-	local inventoryData = {}
+    local inventoryData = {}
 
-	for _, eggRow in pairs(inventoryItems) do
-		local typeName = eggRow:FindFirstChild("TypeName")
-		local eggSlot = eggRow:FindFirstChild("EggSlot")
+    for _, eggRow in pairs(inventoryItems) do
+        local typeName = eggRow:FindFirstChild("TypeName")
+        local eggSlot = eggRow:FindFirstChild("EggSlot")
 
-		if typeName and eggSlot then
-			local itemName = typeName.Text
-			local itemQuantity = parseQuantity(eggSlot.Count.Text)
-			inventoryData[itemName] = itemQuantity
-		else
-			warn("Warning: Missing TypeName or EggSlot in eggRow.")
-		end
-	end
+        if typeName and eggSlot then
+            local itemName = typeName.Text
+            local itemQuantity = parseQuantity(eggSlot.Count.Text)
+            inventoryData[itemName] = itemQuantity
+        else
+            warn("Warning: Missing TypeName or EggSlot in eggRow.")
+        end
+    end
 
-	if player.CoreStats and player.CoreStats.Honey then
-		inventoryData["Honey"] = player.CoreStats.Honey.Value
-	else
-		warn("Warning: Unable to find Honey value in CoreStats.")
-	end
+    if player.CoreStats and player.CoreStats.Honey then
+        inventoryData["Honey"] = player.CoreStats.Honey.Value
+    else
+        warn("Warning: Unable to find Honey value in CoreStats.")
+    end
 
-	-- Check if Honey is the only thing in the inventory
-	if next(inventoryData) == "Honey" and table.getn(inventoryData) == 1 then
-		warn("Warning: Only Honey found in inventory. Returning nil.")
+    -- Check if Honey is the only thing in the inventory
+    if next(inventoryData) == "Honey" and table.getn(inventoryData) == 1 then
+        warn("Warning: Only Honey found in inventory. Attempting to load saved inventory from file.")
+        
+        -- Attempt to read from the saved file
+        local savedInventory = readInventoryData()
+        if savedInventory then
+            print("Info: Loaded saved inventory data from file.")
+            -- Optionally, you might want to re-enable AutoCraftToggle or handle it based on saved data
+            AutoCraftToggle:Set(true)  -- Assuming you want to re-enable it
+            return savedInventory
+        else
+            warn("Error: Failed to load saved inventory data from file.")
+            AutoCraftToggle:Set(false)
+            return nil
+        end
+    end
 
-		-- Check if we have a valid last known inventory
-		if next(lastKnownInventory) then
-			warn("Using last known inventory as a fallback.")
-			return lastKnownInventory
-		else
-			warn("Error: No valid inventory data available.")
-			AutoCraftToggle:Set(false)
-			return nil
-		end
-	end
+    -- Debug prints to verify inventory data
+    print("Debug: Inventory Data")
+    for k, v in pairs(inventoryData) do
+        print(k, v)
+    end
 
-	-- Update the last known inventory with valid data
-	lastKnownInventory = inventoryData
+    -- Save the inventory data to a file
+    saveInventoryData(inventoryData)
 
-	-- Debug prints to verify inventory data
-	print("Debug: Inventory Data")
-	for k, v in pairs(inventoryData) do
-		print(k, v)
-	end
+    -- Encode to JSON for potential other uses
+    local jsonData = HttpService:JSONEncode(inventoryData)
+    if jsonData then
+        print("Debug: Successfully encoded inventory data to JSON.")
+    else
+        warn("Error: Failed to encode inventory data to JSON.")
+    end
 
-	local jsonData = HttpService:JSONEncode(inventoryData)
-	if jsonData then
-		print("Debug: Successfully encoded inventory data to JSON.")
-	else
-		warn("Error: Failed to encode inventory data to JSON.")
-	end
-
-	return inventoryData
+    return inventoryData
 end
 
 
